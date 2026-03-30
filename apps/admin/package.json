@@ -9,7 +9,6 @@
     "lint": "node ../../scripts/next-with-clean-env.mjs lint"
   },
   "dependencies": {
-    "@ventaxlink/database": "*",
     "lucide-react": "^0.468.0",
     "next": "15.5.14",
     "react": "^18",

@@ -1,4 +1,3 @@
-import { prisma } from "@ventaxlink/database";
 import Link from "next/link";
 import { DashboardMetrics } from "@/components/DashboardMetrics";
 import { DashboardPlanInfo } from "@/components/DashboardPlanInfo";
@@ -6,18 +5,39 @@ import { DashboardStoreBanner } from "@/components/DashboardStoreBanner";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardHomePage() {
-  let dbStatus: { ok: boolean; detail: string } = { ok: false, detail: "" };
+function apiHealthUrl(): string {
+  const base = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1").replace(/\/+$/, "");
+  return `${base}/health`;
+}
 
+async function checkBackend(): Promise<{ ok: boolean; detail: string }> {
+  const url = apiHealthUrl();
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    dbStatus = { ok: true, detail: "PostgreSQL respondió correctamente." };
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      return { ok: false, detail: `La API respondió HTTP ${res.status}.` };
+    }
+    const data = (await res.json()) as { status?: string; database?: boolean };
+    if (data.status !== "ok") {
+      return { ok: false, detail: "Respuesta inesperada de la API." };
+    }
+    if (!data.database) {
+      return {
+        ok: false,
+        detail: "La API está arriba pero no puede conectar a PostgreSQL.",
+      };
+    }
+    return { ok: true, detail: "API y base de datos respondieron correctamente." };
   } catch (e) {
-    dbStatus = {
+    return {
       ok: false,
-      detail: e instanceof Error ? e.message : "No se pudo conectar a la base de datos.",
+      detail: e instanceof Error ? e.message : "No se pudo contactar a la API.",
     };
   }
+}
+
+export default async function DashboardHomePage() {
+  const dbStatus = await checkBackend();
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
@@ -35,20 +55,18 @@ export default async function DashboardHomePage() {
           dbStatus.ok ? "border-green-200 bg-white" : "border-amber-200 bg-amber-50"
         }`}
       >
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[#6B7280]">Base de datos</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[#6B7280]">API y base de datos</h2>
         <p className={`mt-2 text-lg font-medium ${dbStatus.ok ? "text-green-700" : "text-amber-800"}`}>
-          {dbStatus.ok ? "Conectada" : "Sin conexión"}
+          {dbStatus.ok ? "Todo bien" : "Revisar conexión"}
         </p>
         <p className="mt-1 text-sm text-[#6B7280]">{dbStatus.detail}</p>
         {!dbStatus.ok && (
           <p className="mt-4 text-sm text-[#92400E]">
-            Levantá Postgres con{" "}
+            Comprobá que la API esté en marcha y que{" "}
+            <code className="rounded bg-white/80 px-1 py-0.5 text-xs">NEXT_PUBLIC_API_URL</code> apunte a{" "}
+            <code className="rounded bg-white/80 px-1 py-0.5 text-xs">…/v1</code>. En local: levantá Postgres con{" "}
             <code className="rounded bg-white/80 px-1 py-0.5 text-xs">docker compose -f infra/docker-compose.yml up -d</code>
-            . Copiá{" "}
-            <code className="rounded bg-white/80 px-1 py-0.5 text-xs">packages/database/.env.example</code> a{" "}
-            <code className="rounded bg-white/80 px-1 py-0.5 text-xs">packages/database/.env</code> (o definí{" "}
-            <code className="rounded bg-white/80 px-1 py-0.5 text-xs">DATABASE_URL</code> en la{" "}
-            <code className="rounded bg-white/80 px-1 py-0.5 text-xs">.env</code> de la raíz). Luego{" "}
+            , configurá <code className="rounded bg-white/80 px-1 py-0.5 text-xs">DATABASE_URL</code> en la API y{" "}
             <code className="rounded bg-white/80 px-1 py-0.5 text-xs">npm run db:migrate</code> en la raíz del monorepo.
           </p>
         )}
