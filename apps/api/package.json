@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "node ../../node_modules/@nestjs/cli/bin/nest.js build",
+    "build": "node ../../packages/database/scripts/prisma-generate.cjs && node ../../node_modules/@nestjs/cli/bin/nest.js build",
     "dev": "node ../../node_modules/@nestjs/cli/bin/nest.js start --watch",
     "start": "node ../../node_modules/@nestjs/cli/bin/nest.js start",
     "start:prod": "node dist/main",
@@ -33,6 +33,7 @@
     "@types/nodemailer": "^7.0.11",
     "@ventaxlink/database": "*",
     "eslint": "^8.57.1",
+    "prisma": "^6.19.2",
     "typescript": "^5.7.3"
   }
 }

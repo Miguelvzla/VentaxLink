@@ -39,10 +39,16 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+  const corsExtra = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   app.enableCors({
     origin: [
       /^http:\/\/localhost:\d+$/,
       /^http:\/\/127\.0\.0\.1:\d+$/,
+      /^https:\/\/.*\.railway\.app$/,
+      ...corsExtra,
     ],
     credentials: true,
   });
