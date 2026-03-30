@@ -1,0 +1,11 @@
+{
+  "name": "@ventaxlink/ui",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {},
+  "peerDependencies": {
+    "react": "^18"
+  }
+}

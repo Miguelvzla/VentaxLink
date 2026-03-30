@@ -1,0 +1,71 @@
+{
+  "name": "ventaxlink",
+  "private": true,
+  "packageManager": "npm@10.9.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "@nestjs/common": "11.1.17",
+    "@nestjs/core": "11.1.17",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/platform-express": "11.1.17",
+    "@prisma/client": "^6.19.2",
+    "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "dotenv": "^16.4.7",
+    "lucide-react": "^0.468.0",
+    "multer": "2.1.1",
+    "nodemailer": "^8.0.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "scripts": {
+    "postinstall": "node scripts/prune-app-node-modules.cjs",
+    "clean:modules": "node scripts/clean-all-node-modules.cjs",
+    "reinstall": "npm run clean:modules && npm install",
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "db:generate": "npm run generate -w @ventaxlink/database",
+    "db:migrate": "npm run migrate:deploy -w @ventaxlink/database",
+    "db:migrate:dev": "npm run migrate:dev -w @ventaxlink/database",
+    "db:push": "npm run push -w @ventaxlink/database",
+    "db:studio": "npm run studio -w @ventaxlink/database",
+    "db:migrate:deploy": "npm run migrate:deploy -w @ventaxlink/database",
+    "db:seed": "npm run seed -w @ventaxlink/database",
+    "clean:apps": "node -e \"const fs=require('fs'),p=require('path');for(const a of['web','admin','store']){const d=p.join('apps',a,'node_modules');try{fs.rmSync(d,{recursive:true,force:true});console.log('removed',d)}catch(e){console.log(d,e.message)}}\"",
+    "clean:next": "node scripts/clean-next.cjs",
+    "dev:web": "turbo dev --filter=@ventaxlink/web"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "11.0.16",
+    "@nestjs/schematics": "11.0.9",
+    "@prisma/client": "^6.19.2",
+    "eslint": "^8",
+    "eslint-config-next": "15.5.14",
+    "next": "15.5.14",
+    "postcss": "^8",
+    "prisma": "^6.19.2",
+    "tailwindcss": "3.4.19",
+    "turbo": "^2.8.21"
+  },
+  "overrides": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "tailwindcss": "3.4.19",
+    "effect": "^3.20.0",
+    "@nestjs/common": "11.1.17",
+    "@nestjs/core": "11.1.17",
+    "@nestjs/platform-express": "11.1.17",
+    "multer": "2.1.1",
+    "path-to-regexp": "8.4.0",
+    "file-type": "22.0.0",
+    "ajv": "8.18.0",
+    "picomatch": "4.0.4"
+  }
+}

@@ -1,0 +1,493 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                          String         @id @default(cuid())
+  slug                        String         @unique
+  name                        String
+  description                 String?
+  logo_url                    String?
+  banner_url                  String?
+  primary_color               String         @default("#22C55E")
+  secondary_color             String         @default("#2563EB")
+  phone                       String
+  email                       String         @unique
+  cuit                        String?
+  plan                        PlanType       @default(STARTER)
+  plan_expires_at             DateTime?
+  status                      TenantStatus   @default(TRIAL)
+  trial_ends_at               DateTime?
+  address                     String?
+  lat                         Float?
+  lng                         Float?
+  google_maps_url             String?
+  instagram_url               String?
+  facebook_url                String?
+  tiktok_url                  String?
+  whatsapp_number             String?
+  schedule                    Json?
+  mp_access_token             String?        @db.Text
+  mp_public_key               String?
+  naranja_token               String?        @db.Text
+  whatsapp_message_template   String?        @db.Text
+  auto_whatsapp               Boolean        @default(true)
+  /// Clave API CallMeBot (opcional) para avisar pedidos nuevos por WhatsApp al comercio
+  notify_callmebot_apikey     String?        @db.VarChar(200)
+  /// SMTP del comercio para enviar mails (p. ej. aviso al cliente con nº de pedido)
+  smtp_host                   String?        @db.VarChar(255)
+  smtp_port                   Int?
+  smtp_secure                 Boolean        @default(false)
+  smtp_user                   String?        @db.VarChar(255)
+  smtp_pass                   String?        @db.Text
+  smtp_from_email             String?        @db.VarChar(255)
+  smtp_from_name              String?        @db.VarChar(120)
+  notify_customer_order_email Boolean        @default(true)
+  /// Texto en tienda pública si el comercio está suspendido por mora (instrucciones de pago)
+  billing_hold_message        String?        @db.Text
+  /// Programa de puntos (planes Pro / Mayorista)
+  points_enabled              Boolean        @default(false)
+  /// Pesos ARS necesarios para sumar 1 punto al entregar un pedido (ej. 1000 = cada $1000 → 1 pt)
+  points_ars_per_point        Decimal?       @db.Decimal(12, 2)
+  /// Puntos mínimos en cuenta para canjear el descuento en checkout
+  points_redeem_min_balance   Int?
+  /// % de descuento sobre el subtotal (después del cupón) al canjear puntos
+  points_redeem_percent       Decimal?       @db.Decimal(5, 2)
+  /// Puntos que se descuentan del saldo al aplicar el canje en el pedido
+  points_redeem_cost          Int?
+  /// Recordatorio mensual de cobro del plan (planes Pro / Mayorista; requiere SMTP)
+  billing_reminder_enabled      Boolean   @default(false)
+  billing_reminder_day_of_month Int?
+  billing_reminder_hour         Int?
+  billing_reminder_subject      String?   @db.VarChar(300)
+  billing_reminder_body         String?   @db.Text
+  billing_payment_alias         String?   @db.Text
+  last_billing_reminder_sent_at DateTime?
+  /// Última vez que se adelantó plan_expires_at un mes (Pro / Mayorista, cron mensual)
+  last_plan_expiry_rolled_at    DateTime?
+  created_at                  DateTime       @default(now())
+  updated_at                  DateTime       @updatedAt
+  users                       User[]
+  products                    Product[]
+  categories                  Category[]
+  orders                      Order[]
+  customers                   Customer[]
+  coupons                     Coupon[]
+  shipping_zones              ShippingZone[]
+  payment_methods             PaymentMethod[]
+  analytics                   AnalyticsEvent[]
+  subscriptions               Subscription[]
+
+  @@index([slug])
+  @@index([status])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  tenant_id     String
+  email         String
+  password_hash String    @db.Text
+  name          String
+  role          UserRole  @default(CASHIER)
+  avatar_url    String?
+  is_active     Boolean   @default(true)
+  last_login    DateTime?
+  refresh_token String?   @db.Text
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  tenant        Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, email])
+  @@index([tenant_id])
+  @@index([email])
+}
+
+model PlatformAdmin {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password_hash String   @db.Text
+  name          String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  tenant_id   String
+  name        String
+  slug        String
+  description String?
+  image_url   String?
+  parent_id   String?
+  sort_order  Int        @default(0)
+  is_active   Boolean    @default(true)
+  created_at  DateTime   @default(now())
+  tenant      Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  parent      Category?  @relation("CategoryHierarchy", fields: [parent_id], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+
+  @@unique([tenant_id, slug])
+  @@index([tenant_id])
+}
+
+model Product {
+  id            String           @id @default(cuid())
+  tenant_id     String
+  category_id   String?
+  name          String
+  slug          String
+  description   String?          @db.Text
+  short_desc    String?
+  price         Decimal          @db.Decimal(12, 2)
+  compare_price Decimal?         @db.Decimal(12, 2)
+  cost_price    Decimal?         @db.Decimal(12, 2)
+  sku           String?
+  barcode       String?
+  track_stock   Boolean          @default(true)
+  stock         Int              @default(0)
+  stock_alert   Int              @default(5)
+  is_active     Boolean          @default(true)
+  is_featured   Boolean          @default(false)
+  is_new        Boolean          @default(false)
+  weight        Float?
+  sort_order    Int              @default(0)
+  meta_title    String?
+  meta_desc     String?
+  tags          String[]
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+  tenant        Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  category      Category?        @relation(fields: [category_id], references: [id])
+  images        ProductImage[]
+  variants      ProductVariant[]
+  order_items   OrderItem[]
+
+  @@unique([tenant_id, slug])
+  @@index([tenant_id])
+  @@index([tenant_id, is_active])
+  @@index([tenant_id, category_id])
+  @@index([tenant_id, is_featured])
+}
+
+model ProductImage {
+  id         String  @id @default(cuid())
+  product_id String
+  url        String
+  alt        String?
+  sort_order Int     @default(0)
+  is_primary Boolean @default(false)
+  product    Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+}
+
+model ProductVariant {
+  id             String  @id @default(cuid())
+  product_id     String
+  name           String
+  value          String
+  price_modifier Decimal @default(0) @db.Decimal(12, 2)
+  stock          Int     @default(0)
+  sku            String?
+  is_active      Boolean @default(true)
+  product        Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+}
+
+model Customer {
+  id            String             @id @default(cuid())
+  tenant_id     String
+  name          String
+  phone         String
+  email         String?
+  address       String?
+  city          String?
+  notes         String?            @db.Text
+  points        Int                @default(0)
+  total_orders  Int                @default(0)
+  total_spent   Decimal            @default(0) @db.Decimal(12, 2)
+  last_order_at DateTime?
+  qr_code       String?            @unique
+  is_active     Boolean            @default(true)
+  created_at    DateTime           @default(now())
+  updated_at    DateTime           @updatedAt
+  tenant        Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  orders        Order[]
+  point_transactions PointTransaction[]
+
+  @@unique([tenant_id, phone])
+  @@index([tenant_id])
+  @@index([tenant_id, phone])
+}
+
+model Order {
+  id               String               @id @default(cuid())
+  tenant_id        String
+  customer_id      String?
+  order_number     Int
+  status           OrderStatus          @default(PENDING)
+  customer_name    String
+  customer_phone   String
+  customer_email   String?
+  delivery_type    DeliveryType         @default(PICKUP)
+  delivery_address String?
+  delivery_city    String?
+  shipping_zone_id String?
+  shipping_cost    Decimal              @default(0) @db.Decimal(12, 2)
+  subtotal         Decimal              @db.Decimal(12, 2)
+  discount_amount  Decimal              @default(0) @db.Decimal(12, 2)
+  total            Decimal              @db.Decimal(12, 2)
+  coupon_id        String?
+  coupon_code      String?
+  payment_status   PaymentStatus        @default(PENDING)
+  payment_method   String?
+  customer_notes   String?              @db.Text
+  admin_notes      String?              @db.Text
+  whatsapp_sent    Boolean              @default(false)
+  whatsapp_text    String?              @db.Text
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
+  tenant           Tenant               @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  customer         Customer?            @relation(fields: [customer_id], references: [id])
+  coupon           Coupon?              @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
+  items            OrderItem[]
+  payments         Payment[]
+  status_history   OrderStatusHistory[]
+  point_transactions PointTransaction[]
+
+  @@unique([tenant_id, order_number])
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, created_at])
+  @@index([customer_id])
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  order_id     String
+  product_id   String
+  variant_id   String?
+  product_name String
+  variant_name String?
+  unit_price   Decimal  @db.Decimal(12, 2)
+  quantity     Int
+  subtotal     Decimal  @db.Decimal(12, 2)
+  order        Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [product_id], references: [id])
+
+  @@index([order_id])
+  @@index([product_id])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  order_id     String
+  gateway      PaymentGateway
+  gateway_ref  String?
+  amount       Decimal       @db.Decimal(12, 2)
+  currency     String        @default("ARS")
+  status       PaymentStatus @default(PENDING)
+  installments Int           @default(1)
+  metadata     Json?
+  webhook_data Json?
+  confirmed_at DateTime?
+  created_at   DateTime      @default(now())
+  order        Order         @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+  @@index([gateway, gateway_ref])
+  @@index([status])
+}
+
+model Coupon {
+  id               String     @id @default(cuid())
+  tenant_id        String
+  code             String
+  description      String?
+  type             CouponType
+  value            Decimal    @db.Decimal(12, 2)
+  min_amount       Decimal?   @db.Decimal(12, 2)
+  max_uses         Int?
+  uses_count       Int        @default(0)
+  max_per_customer Int?       @default(1)
+  is_active        Boolean    @default(true)
+  starts_at        DateTime?
+  expires_at       DateTime?
+  created_at       DateTime   @default(now())
+  tenant           Tenant     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  orders           Order[]
+
+  @@unique([tenant_id, code])
+  @@index([tenant_id])
+}
+
+model ShippingZone {
+  id             String   @id @default(cuid())
+  tenant_id      String
+  name           String
+  description    String?
+  price          Decimal  @db.Decimal(12, 2)
+  free_from      Decimal? @db.Decimal(12, 2)
+  estimated_days Int      @default(1)
+  is_active      Boolean  @default(true)
+  sort_order     Int      @default(0)
+  tenant         Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+}
+
+model PaymentMethod {
+  id         String         @id @default(cuid())
+  tenant_id  String
+  gateway    PaymentGateway
+  label      String?
+  enabled    Boolean        @default(true)
+  config     Json?
+  created_at DateTime       @default(now())
+  updated_at DateTime       @updatedAt
+  tenant     Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, gateway])
+  @@index([tenant_id])
+}
+
+model PointTransaction {
+  id          String    @id @default(cuid())
+  customer_id String
+  points      Int
+  type        PointType
+  description String
+  order_id    String?
+  created_at  DateTime  @default(now())
+  customer    Customer  @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  order       Order?    @relation(fields: [order_id], references: [id], onDelete: SetNull)
+
+  @@index([customer_id])
+  @@index([order_id])
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  tenant_id  String
+  event      String
+  properties Json
+  session_id String?
+  ip_hash    String?
+  user_agent String?
+  created_at DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id, event])
+  @@index([tenant_id, created_at])
+}
+
+model OrderStatusHistory {
+  id         String      @id @default(cuid())
+  order_id   String
+  status     OrderStatus
+  note       String?
+  changed_by String?
+  created_at DateTime    @default(now())
+  order      Order       @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+}
+
+model Subscription {
+  id         String       @id @default(cuid())
+  tenant_id  String
+  plan       PlanType
+  billing    BillingCycle @default(MONTHLY)
+  amount     Decimal      @db.Decimal(12, 2)
+  status     SubStatus    @default(ACTIVE)
+  starts_at  DateTime
+  ends_at    DateTime
+  mp_sub_id  String?
+  created_at DateTime     @default(now())
+  tenant     Tenant       @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+}
+
+enum PlanType {
+  STARTER
+  PRO
+  WHOLESALE
+}
+
+enum TenantStatus {
+  TRIAL
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  CASHIER
+  VIEWER
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  REFUNDED
+}
+
+enum DeliveryType {
+  PICKUP
+  DELIVERY
+}
+
+enum PaymentGateway {
+  MERCADOPAGO
+  BANK_TRANSFER
+  CASH
+  NARANJA
+  UALA
+  MODO
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+  FREE_SHIPPING
+}
+
+enum PointType {
+  EARNED
+  REDEEMED
+  EXPIRED
+  MANUAL
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
+enum SubStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}

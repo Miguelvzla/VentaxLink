@@ -1,0 +1,29 @@
+{
+  "name": "@ventaxlink/admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ../../scripts/next-with-clean-env.mjs dev -p 3002",
+    "build": "node ../../scripts/next-with-clean-env.mjs build",
+    "start": "node ../../scripts/next-with-clean-env.mjs start",
+    "lint": "node ../../scripts/next-with-clean-env.mjs lint"
+  },
+  "dependencies": {
+    "@ventaxlink/database": "*",
+    "lucide-react": "^0.468.0",
+    "next": "15.5.14",
+    "react": "^18",
+    "react-dom": "^18",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "15.5.14",
+    "postcss": "^8",
+    "tailwindcss": "3.4.19",
+    "typescript": "^5"
+  }
+}

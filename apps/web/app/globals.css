@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Transiciones suaves si el navegador soporta View Transitions API */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 0.25s;
+  animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+:root {
+  --color-primary: #22c55e;
+  --color-secondary: #2563eb;
+  --color-primary-dark: #15803d;
+  --color-secondary-dark: #1e40af;
+  --color-bg: #ffffff;
+  --color-surface: #f3f4f6;
+  --color-text: #374151;
+  --color-text-muted: #9ca3af;
+  --gradient-brand: linear-gradient(135deg, #22c55e 0%, #2563eb 100%);
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+@layer utilities {
+  details[open] .landing-details-chevron {
+    transform: rotate(180deg);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .gradient-brand-text {
+    background: var(--gradient-brand);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .gradient-brand-bg {
+    background: var(--gradient-brand);
+  }
+}

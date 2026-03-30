@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --tenant-primary: #22c55e;
+  --tenant-secondary: #2563eb;
+}
+
+body {
+  color: #374151;
+  background: #ffffff;
+}

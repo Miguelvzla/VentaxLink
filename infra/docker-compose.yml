@@ -1,0 +1,23 @@
+# Postgres + Redis para desarrollo local.
+# Levantar: docker compose -f infra/docker-compose.yml up -d
+# DATABASE_URL: copiar packages/database/.env.example → packages/database/.env (o .env en la raíz del repo).
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ventaxlink
+      POSTGRES_USER: ventaxlink
+      POSTGRES_PASSWORD: ventaxlink
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
