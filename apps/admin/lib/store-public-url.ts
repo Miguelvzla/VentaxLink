@@ -11,7 +11,9 @@ function trimBase(s: string | undefined): string | null {
 }
 
 export function resolveStorePublicBase(hostHeader: string | null): string {
-  const runtimeBase = trimBase(process.env.STORE_PUBLIC_BASE);
+  const runtimeBase =
+    trimBase(process.env.STORE_PUBLIC_BASE) ||
+    trimBase(process.env.STORE_PUBLIC_BASE_URL);
   if (runtimeBase) return runtimeBase;
 
   const envUrl = trimBase(process.env.NEXT_PUBLIC_STORE_URL);
@@ -31,6 +33,20 @@ export function resolveStorePublicBase(hostHeader: string | null): string {
   const m = host.match(/^admin\.(.+)$/);
   if (m?.[1]) {
     return `https://store.${m[1]}/tienda`;
+  }
+
+  // Host vacío o interno (proxy Railway a veces no envía el dominio público al SSR)
+  const hostLooksInternal =
+    !host ||
+    host === "localhost" ||
+    host.startsWith("127.") ||
+    host.endsWith(".railway.internal");
+  if (
+    hostLooksInternal &&
+    process.env.NODE_ENV === "production" &&
+    (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID)
+  ) {
+    return "https://store.ventaxlink.ar/tienda";
   }
 
   if (envUrl) return envUrl;

@@ -3,6 +3,9 @@ import { headers } from "next/headers";
 import { RegisterForm } from "@/components/RegisterForm";
 import { resolveStorePublicBase } from "@/lib/store-public-url";
 
+/** Siempre recalcular URL de vista previa (no cachear HTML con localhost). */
+export const dynamic = "force-dynamic";
+
 type PlanChoice = "STARTER" | "PRO" | "WHOLESALE";
 
 function parsePlan(raw: string | string[] | undefined): PlanChoice | undefined {
