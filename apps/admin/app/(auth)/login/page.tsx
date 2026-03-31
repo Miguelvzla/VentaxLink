@@ -19,17 +19,9 @@ export default function LoginPage() {
         <p className="mt-1 text-center text-sm text-[#9CA3AF]">Panel de tu comercio</p>
         <p className="mt-2 text-center text-xs leading-relaxed text-[#9CA3AF]">
           Entrá con el mail y la clave del usuario de <strong className="font-medium text-[#6B7280]">tu negocio</strong>{" "}
-          (el que creaste al registrar la tienda). Después de{" "}
-          <code className="rounded bg-gray-100 px-1 text-[11px]">npm run db:seed</code>, la demo es{" "}
-          <span className="font-mono text-[11px] text-[#374151]">admin@ventaxlink.local</span> /{" "}
-          <span className="font-mono text-[11px] text-[#374151]">admin123</span>.
+          (el que creaste al registrar la tienda).
         </p>
         <LoginForm />
-        <p className="mt-6 text-center text-xs text-[#9CA3AF]">
-          <a href="/platform/login" className="hover:text-[#6B7280]">
-            Acceso staff VentaXLink (plataforma)
-          </a>
-        </p>
       </div>
     </div>
   );
