@@ -217,11 +217,23 @@ async function readJsonResponse<T>(
 export async function postJson<T>(path: string, body: unknown, token?: string): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const r = await fetch(`${base}${path}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
+  let r: Response;
+  try {
+    r = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      mode: "cors",
+    });
+  } catch (e) {
+    const msg =
+      e instanceof TypeError
+        ? "No se pudo conectar con la API (red, CORS o URL). Revisá NEXT_PUBLIC_API_URL y el deploy de la API."
+        : e instanceof Error
+          ? e.message
+          : "Error de red";
+    throw new Error(msg);
+  }
   return readJsonResponse<T>(r, `Error ${r.status}`, onUnauthorized);
 }
 

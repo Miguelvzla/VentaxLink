@@ -76,16 +76,21 @@ export function SoporteClient() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSendError(null);
+    setSent(false);
     setSending(true);
     try {
-      await postJson<{ ok: boolean }>("/public/contact", {
+      const res = await postJson<{ ok: boolean }>("/public/contact", {
         name: name.trim(),
         commerce: commerce.trim(),
         message: message.trim(),
         reply_email: tenantEmail || undefined,
       });
-      setSent(true);
-      setMessage("");
+      if (res?.ok) {
+        setSent(true);
+        setMessage("");
+      } else {
+        setSendError("La API no confirmó el envío. Probá de nuevo.");
+      }
     } catch (err) {
       setSendError(err instanceof Error ? err.message : "No se pudo enviar. Probá de nuevo.");
     } finally {
@@ -104,15 +109,27 @@ export function SoporteClient() {
       </div>
 
       {sent ? (
-        <div className="rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-900">
-          Listo. Recibimos tu mensaje y te vamos a responder a tu email de cuenta
-          {tenantEmail ? (
-            <>
-              {" "}
-              (<span className="font-mono">{tenantEmail}</span>)
-            </>
-          ) : null}
-          .
+        <div className="space-y-2 rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-900">
+          <p>
+            Listo. Recibimos tu mensaje y te vamos a responder a tu email de cuenta
+            {tenantEmail ? (
+              <>
+                {" "}
+                (<span className="font-mono">{tenantEmail}</span>)
+              </>
+            ) : null}
+            .
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setSent(false);
+              setSendError(null);
+            }}
+            className="text-sm font-semibold text-[#2563EB] hover:underline"
+          >
+            Enviar otro mensaje
+          </button>
         </div>
       ) : null}
 
@@ -156,7 +173,7 @@ export function SoporteClient() {
           disabled={sending || sent}
           className="w-full rounded-xl bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1D4ED8] disabled:opacity-60"
         >
-          {sending ? "Enviando…" : sent ? "Enviado" : "Enviar mensaje"}
+          {sending ? "Enviando…" : "Enviar mensaje"}
         </button>
       </form>
     </div>
