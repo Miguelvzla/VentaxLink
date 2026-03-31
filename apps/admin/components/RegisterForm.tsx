@@ -22,7 +22,7 @@ function slugifyHint(name: string): string {
 
 type RegisterFormProps = {
   initialPlan?: PlanChoice;
-  /** Resuelto en el servidor según host (ej. admin.* → https://store.*/tienda) */
+  /** Base pública `.../tienda`, resuelta en el servidor (host admin → store). */
   storePublicBase: string;
 };
 
