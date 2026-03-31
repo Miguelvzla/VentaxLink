@@ -18,11 +18,11 @@ export class PublicController {
   ) {}
 
   /**
-   * Responde al toque para evitar 502 por timeout del proxy (SMTP puede tardar).
-   * Si la config está mal, 503 antes de encolar.
+   * Espera al envío SMTP para no dar “ok” si el correo no salió (antes era fire-and-forget).
+   * Si el proxy corta por tiempo, subí CONTACT_REQUEST_TIMEOUT_MS / REQUEST_TIMEOUT_MS en la API.
    */
   @Post('contact')
-  contact(@Body() dto: CommercialContactDto) {
+  async contact(@Body() dto: CommercialContactDto) {
     if (!this.orderNotifications.contactFormReady()) {
       throw new HttpException(
         {
@@ -34,25 +34,40 @@ export class PublicController {
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
-    void this.orderNotifications
-      .sendCommercialContactSync({
+    try {
+      const sent = await this.orderNotifications.sendCommercialContactSync({
         name: dto.name,
         commerce: dto.commerce ?? '',
         message: dto.message,
         replyEmail: dto.reply_email,
-      })
-      .then((ok) => {
-        if (!ok) {
-          this.logger.warn(
-            'Contacto comercial: sendCommercialContactSync devolvió false (revisá logs SMTP)',
-          );
-        }
-      })
-      .catch((err: unknown) => {
-        this.logger.error(
-          `Contacto comercial falló: ${err instanceof Error ? err.message : err}`,
-        );
       });
-    return { ok: true };
+      if (!sent) {
+        this.logger.warn(
+          'Contacto comercial: sendCommercialContactSync devolvió false (revisá SMTP)',
+        );
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+            message:
+              'No se pudo entregar el mensaje por correo. Revisá SMTP (SMTP_HOST, MAIL_FROM, SMTP_USER/PASS) en el servidor de la API.',
+            code: 'CONTACT_MAIL_SEND_FAILED',
+          },
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Contacto comercial SMTP: ${msg}`);
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.BAD_GATEWAY,
+          message: `No se pudo enviar el correo: ${msg}`,
+          code: 'CONTACT_SMTP_ERROR',
+        },
+        HttpStatus.BAD_GATEWAY,
+      );
+    }
   }
 }

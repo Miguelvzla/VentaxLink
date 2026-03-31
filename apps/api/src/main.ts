@@ -126,9 +126,15 @@ async function bootstrap() {
   app.use('/v1/public/contact', contactLimiter);
 
   const requestTimeoutMs = Number(process.env.REQUEST_TIMEOUT_MS || 15_000);
+  const contactTimeoutMs = Number(
+    process.env.CONTACT_REQUEST_TIMEOUT_MS || 45_000,
+  );
   app.use((req, res, next) => {
-    req.setTimeout(requestTimeoutMs);
-    res.setTimeout(requestTimeoutMs);
+    const path = req.path || '';
+    const ms =
+      path.includes('/public/contact') ? contactTimeoutMs : requestTimeoutMs;
+    req.setTimeout(ms);
+    res.setTimeout(ms);
     next();
   });
 
@@ -148,8 +154,9 @@ async function bootstrap() {
   );
   const port = Number(process.env.PORT) || 3001;
   const server = await app.listen(port);
-  server.requestTimeout = requestTimeoutMs;
-  server.headersTimeout = requestTimeoutMs + 5_000;
+  const serverRequestTimeoutMs = Math.max(requestTimeoutMs, contactTimeoutMs);
+  server.requestTimeout = serverRequestTimeoutMs;
+  server.headersTimeout = serverRequestTimeoutMs + 5_000;
   server.keepAliveTimeout = Number(
     process.env.KEEP_ALIVE_TIMEOUT_MS || 5_000,
   );
