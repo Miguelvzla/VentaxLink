@@ -129,10 +129,12 @@ export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps
           }}
           className="w-full rounded-xl border border-gray-200 bg-[#F3F4F6] px-4 py-3 font-mono text-sm text-[#374151] outline-none ring-[#22C55E] focus:ring-2"
         />
-        <p className="mt-1 text-xs text-[#9CA3AF]">
-          Dirección pública de tu tienda:{" "}
-          <span className="font-mono text-[#374151] break-all">{previewUrl}</span>
-        </p>
+        <div className="mt-2 space-y-1.5 rounded-xl border border-gray-100 bg-[#F9FAFB] px-3 py-2.5">
+          <p className="text-xs leading-snug text-[#6B7280]">
+            Vista previa: así se verá la dirección de tu tienda con el link que elijas arriba.
+          </p>
+          <p className="break-all font-mono text-[13px] text-[#374151]">{previewUrl}</p>
+        </div>
       </div>
       <div>
         <label htmlFor="email" className="mb-1 block text-sm font-medium text-[#374151]">
