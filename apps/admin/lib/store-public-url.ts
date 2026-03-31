@@ -1,25 +1,20 @@
 /**
  * URL base pública de la tienda (`.../tienda`), para previews en el admin.
- * Orden: STORE_URL (no localhost) → derivar desde NEXT_PUBLIC_ADMIN_URL (admin.* → store.*)
- * → host de la petición → fallbacks locales.
+ *
+ * Importante: `NEXT_PUBLIC_*` se congela en el **build**. En Railway, si no inyectás esas vars
+ * al compilar, seguirás viendo localhost. Por eso la prioridad 1 es `STORE_PUBLIC_BASE`
+ * (solo servidor, se lee en cada request en runtime).
  */
-function storeBaseFromAdminUrlEnv(): string | null {
-  const raw = process.env.NEXT_PUBLIC_ADMIN_URL?.trim();
-  if (!raw) return null;
-  try {
-    const u = new URL(raw.includes("://") ? raw : `https://${raw}`);
-    const h = u.hostname.toLowerCase();
-    if (h.startsWith("admin.")) {
-      return `https://store.${h.slice("admin.".length)}/tienda`;
-    }
-  } catch {
-    return null;
-  }
-  return null;
+function trimBase(s: string | undefined): string | null {
+  const t = s?.trim()?.replace(/\/+$/, "");
+  return t || null;
 }
 
 export function resolveStorePublicBase(hostHeader: string | null): string {
-  const envUrl = process.env.NEXT_PUBLIC_STORE_URL?.trim()?.replace(/\/+$/, "");
+  const runtimeBase = trimBase(process.env.STORE_PUBLIC_BASE);
+  if (runtimeBase) return runtimeBase;
+
+  const envUrl = trimBase(process.env.NEXT_PUBLIC_STORE_URL);
   if (envUrl && !/^https?:\/\/localhost(?::\d+)?\b/i.test(envUrl)) {
     return envUrl;
   }
@@ -44,4 +39,20 @@ export function resolveStorePublicBase(hostHeader: string | null): string {
     "",
   );
   return `${origin}/tienda`;
+}
+
+function storeBaseFromAdminUrlEnv(): string | null {
+  const raw =
+    process.env.ADMIN_PUBLIC_URL?.trim() || process.env.NEXT_PUBLIC_ADMIN_URL?.trim();
+  if (!raw) return null;
+  try {
+    const u = new URL(raw.includes("://") ? raw : `https://${raw}`);
+    const h = u.hostname.toLowerCase();
+    if (h.startsWith("admin.")) {
+      return `https://store.${h.slice("admin.".length)}/tienda`;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
