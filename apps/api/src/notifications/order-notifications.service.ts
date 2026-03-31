@@ -110,6 +110,14 @@ export class OrderNotificationsService {
     return !!(process.env.SMTP_HOST?.trim() && process.env.MAIL_FROM?.trim());
   }
 
+  /** Formulario soporte: SMTP global + bandeja destino */
+  contactFormReady(): boolean {
+    const inbox =
+      process.env.CONTACT_FORM_TO_EMAIL?.trim() ||
+      process.env.SUPPORT_INBOX_EMAIL?.trim();
+    return this.isGlobalSmtpConfigured() && !!inbox;
+  }
+
   private createTransporter(tenantSmtp: TenantSmtpForMail | null) {
     if (tenantSmtp) {
       return nodemailer.createTransport({

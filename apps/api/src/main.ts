@@ -104,16 +104,29 @@ async function bootstrap() {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+
+  function corsAllowed(origin: string | undefined): boolean {
+    if (!origin) return true;
+    if (corsExtra.includes(origin)) return true;
+    return (
+      /^http:\/\/localhost:\d+$/.test(origin) ||
+      /^http:\/\/127\.0\.0\.1:\d+$/.test(origin) ||
+      /^https:\/\/.*\.railway\.app$/.test(origin) ||
+      /^https:\/\/([a-z0-9-]+\.)*ventaxlink\.ar$/.test(origin)
+    );
+  }
+
   app.enableCors({
-    origin: [
-      /^http:\/\/localhost:\d+$/,
-      /^http:\/\/127\.0\.0\.1:\d+$/,
-      /^https:\/\/.*\.railway\.app$/,
-      // Admin / tienda / web en dominio propio (ej. admin.ventaxlink.ar → api.ventaxlink.ar)
-      /^https:\/\/([a-z0-9-]+\.)*ventaxlink\.ar$/,
-      ...corsExtra,
-    ],
+    origin: (origin, callback) => {
+      if (corsAllowed(origin)) {
+        callback(null, origin ?? true);
+      } else {
+        callback(null, false);
+      }
+    },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
   const port = Number(process.env.PORT) || 3001;
   const server = await app.listen(port);
