@@ -7,7 +7,16 @@ import { useEffect, useMemo, useState } from "react";
 import { postJson, type AuthResponse } from "@/lib/api";
 import { getToken, saveSession } from "@/lib/auth";
 
-const storeOrigin = process.env.NEXT_PUBLIC_STORE_ORIGIN ?? "http://localhost:3003";
+/** Base pública `/tienda` — prioriza NEXT_PUBLIC_STORE_URL (ej. https://store.ventaxlink.ar/tienda). */
+const storePublicBase = (() => {
+  const url = process.env.NEXT_PUBLIC_STORE_URL?.trim();
+  if (url) return url.replace(/\/+$/, "");
+  const origin = (process.env.NEXT_PUBLIC_STORE_ORIGIN ?? "http://localhost:3003").replace(
+    /\/+$/,
+    "",
+  );
+  return `${origin}/tienda`;
+})();
 
 type PlanChoice = "STARTER" | "PRO" | "WHOLESALE";
 
@@ -51,8 +60,8 @@ export function RegisterForm({ initialPlan }: RegisterFormProps) {
   const [loading, setLoading] = useState(false);
 
   const previewUrl = useMemo(() => {
-    const s = slug.trim().toLowerCase() || "tu-tienda";
-    return `${storeOrigin}/tienda/${s}`;
+    const s = slug.trim().toLowerCase() || "tu-link";
+    return `${storePublicBase}/${s}`;
   }, [slug]);
 
   function onStoreNameChange(v: string) {
@@ -127,7 +136,8 @@ export function RegisterForm({ initialPlan }: RegisterFormProps) {
           className="w-full rounded-xl border border-gray-200 bg-[#F3F4F6] px-4 py-3 font-mono text-sm text-[#374151] outline-none ring-[#22C55E] focus:ring-2"
         />
         <p className="mt-1 text-xs text-[#9CA3AF]">
-          Tu tienda va a quedar en: <span className="font-mono text-[#374151]">{previewUrl}</span>
+          Dirección pública de tu tienda:{" "}
+          <span className="font-mono text-[#374151] break-all">{previewUrl}</span>
         </p>
       </div>
       <div>
