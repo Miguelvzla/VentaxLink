@@ -7,17 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import { postJson, type AuthResponse } from "@/lib/api";
 import { getToken, saveSession } from "@/lib/auth";
 
-/** Base pública `/tienda` — prioriza NEXT_PUBLIC_STORE_URL (ej. https://store.ventaxlink.ar/tienda). */
-const storePublicBase = (() => {
-  const url = process.env.NEXT_PUBLIC_STORE_URL?.trim();
-  if (url) return url.replace(/\/+$/, "");
-  const origin = (process.env.NEXT_PUBLIC_STORE_ORIGIN ?? "http://localhost:3003").replace(
-    /\/+$/,
-    "",
-  );
-  return `${origin}/tienda`;
-})();
-
 type PlanChoice = "STARTER" | "PRO" | "WHOLESALE";
 
 function slugifyHint(name: string): string {
@@ -31,9 +20,13 @@ function slugifyHint(name: string): string {
     .slice(0, 60);
 }
 
-type RegisterFormProps = { initialPlan?: PlanChoice };
+type RegisterFormProps = {
+  initialPlan?: PlanChoice;
+  /** Resuelto en el servidor según host (ej. admin.* → https://store.*/tienda) */
+  storePublicBase: string;
+};
 
-export function RegisterForm({ initialPlan }: RegisterFormProps) {
+export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps) {
   const router = useRouter();
 
   useEffect(() => {
@@ -61,8 +54,9 @@ export function RegisterForm({ initialPlan }: RegisterFormProps) {
 
   const previewUrl = useMemo(() => {
     const s = slug.trim().toLowerCase() || "tu-link";
-    return `${storePublicBase}/${s}`;
-  }, [slug]);
+    const base = storePublicBase.replace(/\/+$/, "");
+    return `${base}/${s}`;
+  }, [slug, storePublicBase]);
 
   function onStoreNameChange(v: string) {
     setStoreName(v);

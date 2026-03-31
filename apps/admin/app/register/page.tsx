@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { RegisterForm } from "@/components/RegisterForm";
+import { resolveStorePublicBase } from "@/lib/store-public-url";
 
 type PlanChoice = "STARTER" | "PRO" | "WHOLESALE";
 
@@ -16,6 +18,9 @@ export default async function RegisterPage({
 }) {
   const sp = await searchParams;
   const initialPlan = parsePlan(sp.plan);
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const storePublicBase = resolveStorePublicBase(host);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-[#F3F4F6] px-4 py-10">
@@ -25,7 +30,7 @@ export default async function RegisterPage({
           <span className="text-[#2563EB]">XLink</span>
         </Link>
         <p className="mt-1 text-center text-sm text-[#9CA3AF]">Creá tu tienda en minutos</p>
-        <RegisterForm initialPlan={initialPlan} />
+        <RegisterForm initialPlan={initialPlan} storePublicBase={storePublicBase} />
       </div>
     </div>
   );
