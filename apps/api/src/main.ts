@@ -109,6 +109,8 @@ async function bootstrap() {
       /^http:\/\/localhost:\d+$/,
       /^http:\/\/127\.0\.0\.1:\d+$/,
       /^https:\/\/.*\.railway\.app$/,
+      // Admin / tienda / web en dominio propio (ej. admin.ventaxlink.ar → api.ventaxlink.ar)
+      /^https:\/\/([a-z0-9-]+\.)*ventaxlink\.ar$/,
       ...corsExtra,
     ],
     credentials: true,
