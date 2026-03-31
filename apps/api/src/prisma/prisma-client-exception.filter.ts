@@ -51,7 +51,7 @@ export class PrismaClientExceptionFilter extends BaseExceptionFilter {
       return res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
         statusCode: HttpStatus.SERVICE_UNAVAILABLE,
         message:
-          'La base de datos no coincide con el esquema. En la raíz del repo ejecutá: npm run db:migrate (prisma migrate deploy; no requiere permiso CREATEDB). db:migrate:dev solo si tu usuario PostgreSQL puede crear bases (shadow); si falla con P3014, usá db:migrate.',
+          'No pudimos guardar los datos: falta aplicar migraciones en la base de producción. Quien administra el servidor: en la raíz del repo, `npm run db:migrate` con DATABASE_URL de Railway; en el próximo deploy usá `npm run start:api:prod` como comando de inicio.',
         code: 'P2022',
       });
     }

@@ -35,6 +35,7 @@
     "db:push": "npm run push -w @ventaxlink/database",
     "db:studio": "npm run studio -w @ventaxlink/database",
     "db:migrate:deploy": "npm run migrate:deploy -w @ventaxlink/database",
+    "start:api:prod": "npm run db:migrate && npm run start:prod -w @ventaxlink/api",
     "db:seed": "npm run seed -w @ventaxlink/database",
     "clean:apps": "node -e \"const fs=require('fs'),p=require('path');for(const a of['web','admin','store']){const d=p.join('apps',a,'node_modules');try{fs.rmSync(d,{recursive:true,force:true});console.log('removed',d)}catch(e){console.log(d,e.message)}}\"",
     "clean:next": "node scripts/clean-next.cjs",
