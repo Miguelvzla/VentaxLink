@@ -432,12 +432,19 @@ ${p.notes ? `<tr><td style="padding:4px 12px 4px 0;color:#555;vertical-align:top
 <p style="color:#666;font-size:14px">— VentaXLink</p>
 </body></html>`;
 
-    await this.sendPlatformEmail({
+    const welcomeOk = await this.sendPlatformEmail({
       to: payload.tenantEmail,
       subject: welcomeSubject,
       text: welcomeText,
       html: welcomeHtml,
     });
+    if (!welcomeOk) {
+      this.logger.warn(
+        `Mail de bienvenida no enviado a ${payload.tenantEmail}: falta SMTP global (SMTP_HOST + MAIL_FROM) en el proceso de la API`,
+      );
+    } else {
+      this.logger.log(`Mail de bienvenida enviado a ${payload.tenantEmail}`);
+    }
 
     const internals = internalNotifyRecipients();
     if (internals.length === 0) {

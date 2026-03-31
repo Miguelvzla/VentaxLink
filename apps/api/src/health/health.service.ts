@@ -13,10 +13,23 @@ export class HealthService {
     } catch {
       database = false;
     }
+    const smtpHost = !!process.env.SMTP_HOST?.trim();
+    const smtpFrom = !!process.env.MAIL_FROM?.trim();
+    const smtpUser = !!process.env.SMTP_USER?.trim();
+    const smtpPass = !!process.env.SMTP_PASS?.trim();
+    /** Igual que OrderNotificationsService.isGlobalSmtpConfigured — solo host + from */
+    const smtp_ready = smtpHost && smtpFrom;
     return {
       status: 'ok',
       database,
       time: new Date().toISOString(),
+      smtp_ready,
+      smtp: {
+        host: smtpHost,
+        mail_from: smtpFrom,
+        user: smtpUser,
+        pass: smtpPass,
+      },
     };
   }
 }
