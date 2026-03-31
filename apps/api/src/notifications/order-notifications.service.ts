@@ -501,12 +501,22 @@ ${p.notes ? `<tr><td style="padding:4px 12px 4px 0;color:#555;vertical-align:top
     });
   }
 
+  /** Envío síncrono para HTTP: devuelve false si no hay bandeja o SMTP global. */
+  async sendCommercialContactSync(payload: {
+    name: string;
+    commerce: string;
+    message: string;
+    replyEmail?: string;
+  }): Promise<boolean> {
+    return this.sendCommercialContact(payload);
+  }
+
   private async sendCommercialContact(payload: {
     name: string;
     commerce: string;
     message: string;
     replyEmail?: string;
-  }): Promise<void> {
+  }): Promise<boolean> {
     const to =
       process.env.CONTACT_FORM_TO_EMAIL?.trim() ||
       process.env.SUPPORT_INBOX_EMAIL?.trim() ||
@@ -515,7 +525,7 @@ ${p.notes ? `<tr><td style="padding:4px 12px 4px 0;color:#555;vertical-align:top
       this.logger.warn(
         'CONTACT_FORM_TO_EMAIL no configurado: no se envía el formulario de contacto',
       );
-      return;
+      return false;
     }
     const subject = `Contacto comercial — ${payload.commerce || 'sin comercio'}`;
     const text = [
@@ -534,13 +544,20 @@ Comercio: ${escapeHtml(payload.commerce || '—')}</p>
 ${payload.replyEmail ? `<p>Responder a: ${escapeHtml(payload.replyEmail)}</p>` : ''}
 <pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(payload.message)}</pre>
 </body></html>`;
-    await this.sendPlatformEmail({
+    const primaryOk = await this.sendPlatformEmail({
       to,
       subject,
       text,
       html,
       replyTo: payload.replyEmail,
     });
+    if (!primaryOk) {
+      this.logger.warn(
+        `Contacto comercial no enviado a ${to}: falta SMTP global (SMTP_HOST + MAIL_FROM)`,
+      );
+      return false;
+    }
+    this.logger.log(`Contacto comercial enviado a ${to}`);
 
     const primaryLower = to.toLowerCase();
     const internals = internalNotifyRecipients().filter(
@@ -556,6 +573,7 @@ ${payload.replyEmail ? `<p>Responder a: ${escapeHtml(payload.replyEmail)}</p>` :
         replyTo: payload.replyEmail,
       });
     }
+    return true;
   }
 
   schedulePlanChangeEmail(payload: {

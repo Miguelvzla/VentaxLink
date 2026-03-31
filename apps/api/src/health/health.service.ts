@@ -19,11 +19,15 @@ export class HealthService {
     const smtpPass = !!process.env.SMTP_PASS?.trim();
     /** Igual que OrderNotificationsService.isGlobalSmtpConfigured — solo host + from */
     const smtp_ready = smtpHost && smtpFrom;
+    const contact_inbox =
+      !!process.env.CONTACT_FORM_TO_EMAIL?.trim() ||
+      !!process.env.SUPPORT_INBOX_EMAIL?.trim();
     return {
       status: 'ok',
       database,
       time: new Date().toISOString(),
       smtp_ready,
+      contact_inbox,
       smtp: {
         host: smtpHost,
         mail_from: smtpFrom,
