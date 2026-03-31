@@ -8,6 +8,7 @@ import { HealthModule } from './health/health.module';
 import { OrdersModule } from './orders/orders.module';
 import { PlatformModule } from './platform/platform.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PublicModule } from './public/public.module';
 import { ProductsModule } from './products/products.module';
 import { StoreModule } from './store/store.module';
 import { TenantModule } from './tenant/tenant.module';
@@ -22,6 +23,7 @@ import { UploadsModule } from './uploads/uploads.module';
     StoreModule,
     ProductsModule,
     PlatformModule,
+    PublicModule,
     UploadsModule,
     OrdersModule,
     CustomersModule,

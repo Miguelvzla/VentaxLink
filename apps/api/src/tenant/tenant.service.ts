@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PlanType, Prisma } from '@prisma/client';
+import { OrderNotificationsService } from '../notifications/order-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
@@ -60,7 +61,10 @@ const tenantMeDbSelect = {
 
 @Injectable()
 export class TenantService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly orderNotifications: OrderNotificationsService,
+  ) {}
 
   private mapTenantMe(
     t: Prisma.TenantGetPayload<{ select: typeof tenantMeDbSelect }>,
@@ -160,6 +164,9 @@ export class TenantService {
       where: { id: tenantId },
       select: {
         plan: true,
+        slug: true,
+        name: true,
+        email: true,
         billing_reminder_enabled: true,
         billing_reminder_day_of_month: true,
         billing_reminder_hour: true,
@@ -279,6 +286,19 @@ export class TenantService {
         data,
         select: tenantMeDbSelect,
       });
+      if (
+        dto.plan !== undefined &&
+        cur &&
+        cur.plan !== t.plan
+      ) {
+        this.orderNotifications.schedulePlanChangeEmail({
+          tenantEmail: t.email,
+          tenantName: t.name,
+          slug: t.slug,
+          oldPlan: cur.plan,
+          newPlan: t.plan,
+        });
+      }
       return this.mapTenantMe(t);
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {

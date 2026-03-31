@@ -318,6 +318,10 @@ export function ConfiguracionClient() {
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-[#374151]">Descripción</label>
+              <p className="mb-2 text-xs text-[#6B7280]">
+                Se muestra en la tienda y como texto de vista previa cuando compartís el link (por ejemplo en WhatsApp,
+                Instagram, etc.), junto al nombre y el logo.
+              </p>
               <textarea
                 rows={3}
                 value={form.description}

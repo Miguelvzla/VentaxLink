@@ -2,8 +2,13 @@ node_modules
 .next
 .turbo
 dist
+
+# Secretos (variables de entorno; no subir nunca)
 .env
 .env.local
+.env.*.local
+packages/database/.env
+
 *.log
 .DS_Store
 

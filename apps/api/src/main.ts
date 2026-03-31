@@ -65,12 +65,19 @@ async function bootstrap() {
     standardHeaders: true,
     legacyHeaders: false,
   });
+  const contactLimiter = rateLimit({
+    windowMs: Number(process.env.RATE_LIMIT_CONTACT_WINDOW_MS || 60_000),
+    max: Number(process.env.RATE_LIMIT_CONTACT_MAX || 8),
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
   app.use('/v1', globalLimiter);
   app.use('/v1/auth/login', authLoginLimiter);
   app.use('/v1/auth/register', authRegisterLimiter);
   app.use('/v1/store/:slug/checkout', checkoutLimiter);
   app.use('/v1/store/:slug/track', trackLimiter);
+  app.use('/v1/public/contact', contactLimiter);
 
   const requestTimeoutMs = Number(process.env.REQUEST_TIMEOUT_MS || 15_000);
   app.use((req, res, next) => {

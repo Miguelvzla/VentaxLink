@@ -199,4 +199,74 @@ export class BillingReminderService {
       }
     }
   }
+
+  /**
+   * Diario 8:00 (hora del servidor): aviso de renovación entre 1 y N días antes de `plan_expires_at`.
+   * Reintenta cada día hasta enviar (si falla SMTP) mientras siga en la ventana.
+   */
+  @Cron('0 8 * * *')
+  async handlePlanExpiryWarningDaily(): Promise<void> {
+    const raw = Number(process.env.PLAN_EXPIRY_WARNING_DAYS || 7);
+    const warnDays = Number.isFinite(raw) ? Math.min(60, Math.max(1, Math.floor(raw))) : 7;
+    const now = new Date();
+
+    const tenants = await this.prisma.tenant.findMany({
+      where: {
+        plan: { in: [PlanType.PRO, PlanType.WHOLESALE] },
+        status: { in: [TenantStatus.ACTIVE, TenantStatus.TRIAL] },
+        plan_expires_at: { not: null },
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        email: true,
+        plan_expires_at: true,
+        plan_expiry_warning_sent_for: true,
+        smtp_host: true,
+        smtp_port: true,
+        smtp_secure: true,
+        smtp_user: true,
+        smtp_pass: true,
+        smtp_from_email: true,
+        smtp_from_name: true,
+      },
+    });
+
+    for (const t of tenants) {
+      const exp = t.plan_expires_at!;
+      const to = t.email?.trim();
+      if (!to) continue;
+
+      const daysUntil = Math.round(
+        (startOfDay(exp).getTime() - startOfDay(now).getTime()) / 86_400_000,
+      );
+      if (daysUntil < 1 || daysUntil > warnDays) continue;
+
+      if (
+        t.plan_expiry_warning_sent_for &&
+        t.plan_expiry_warning_sent_for.getTime() === exp.getTime()
+      ) {
+        continue;
+      }
+
+      const smtp = tenantSmtpFromRow(t);
+      const ok = await this.orderNotifications.sendPlanExpiryWarningEmail({
+        tenantEmail: to,
+        tenantName: t.name,
+        slug: t.slug,
+        planExpiresAt: exp,
+        tenantSmtp: smtp,
+      });
+      if (ok) {
+        await this.prisma.tenant.update({
+          where: { id: t.id },
+          data: { plan_expiry_warning_sent_for: exp },
+        });
+        this.logger.log(
+          `Aviso vencimiento plan enviado — ${t.name} (${t.id}), faltan ${daysUntil} días`,
+        );
+      }
+    }
+  }
 }

@@ -6,6 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PlanType, Prisma, Tenant, User, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { OrderNotificationsService } from '../notifications/order-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -23,6 +24,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly orderNotifications: OrderNotificationsService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -74,6 +76,14 @@ export class AuthService {
           },
         });
         return { tenant: t, user: u };
+      });
+      this.orderNotifications.scheduleRegistrationEmails({
+        tenantEmail: tenant.email,
+        tenantName: tenant.name,
+        slug: tenant.slug,
+        phone: tenant.phone,
+        plan: tenant.plan,
+        ownerName: user.name,
       });
       return this.buildAuthResponse(user, tenant);
     } catch (e) {

@@ -70,6 +70,8 @@ model Tenant {
   last_billing_reminder_sent_at DateTime?
   /// Última vez que se adelantó plan_expires_at un mes (Pro / Mayorista, cron mensual)
   last_plan_expiry_rolled_at    DateTime?
+  /// Fecha de vencimiento para la cual ya enviamos aviso "próximo a vencer" (evita duplicados)
+  plan_expiry_warning_sent_for  DateTime?
   created_at                  DateTime       @default(now())
   updated_at                  DateTime       @updatedAt
   users                       User[]

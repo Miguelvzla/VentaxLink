@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DeliveryType } from '@prisma/client';
+import { DeliveryType, PlanType } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
 
 export type OrderNotifyLine = {
@@ -53,6 +53,37 @@ function escapeHtml(s: string): string {
 
 function deliveryLabel(d: DeliveryType): string {
   return d === 'DELIVERY' ? 'Envío a domicilio' : 'Retiro en el local';
+}
+
+function planLabel(p: PlanType): string {
+  if (p === PlanType.PRO) return 'Pro';
+  if (p === PlanType.WHOLESALE) return 'Mayorista';
+  return 'Inicio';
+}
+
+function internalNotifyRecipients(): string[] {
+  const raw =
+    process.env.INTERNAL_NOTIFY_EMAILS?.trim() ||
+    process.env.INTERNAL_NOTIFY_EMAIL?.trim() ||
+    '';
+  return raw
+    .split(/[,;]/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function storePublicUrl(slug: string): string {
+  const base = (process.env.PUBLIC_STORE_URL || 'http://localhost:3003').replace(
+    /\/+$/,
+    '',
+  );
+  return `${base}/tienda/${encodeURIComponent(slug)}`;
+}
+
+function adminPanelUrl(): string {
+  return (process.env.PUBLIC_ADMIN_URL || process.env.NEXT_PUBLIC_ADMIN_URL || '')
+    .trim()
+    .replace(/\/+$/, '') || 'http://localhost:3002';
 }
 
 @Injectable()
@@ -322,5 +353,325 @@ ${p.notes ? `<tr><td style="padding:4px 12px 4px 0;color:#555;vertical-align:top
     ]
       .filter((x) => x !== '')
       .join('\n');
+  }
+
+  /**
+   * Correos de plataforma (bienvenida, internos, contacto): solo SMTP global (MAIL_FROM + SMTP_*).
+   */
+  async sendPlatformEmail(params: {
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+    replyTo?: string;
+  }): Promise<boolean> {
+    if (!this.isGlobalSmtpConfigured()) {
+      this.logger.warn(
+        'Correo de plataforma: falta SMTP_HOST y MAIL_FROM; no se envía',
+      );
+      return false;
+    }
+    const transporter = this.createTransporter(null);
+    if (!transporter) return false;
+    const from = this.mailFrom(null);
+    await transporter.sendMail({
+      from,
+      to: params.to.trim(),
+      replyTo: params.replyTo?.trim() || undefined,
+      subject: params.subject,
+      text: params.text,
+      html: params.html,
+    });
+    return true;
+  }
+
+  scheduleRegistrationEmails(payload: {
+    tenantEmail: string;
+    tenantName: string;
+    slug: string;
+    phone: string;
+    plan: PlanType;
+    ownerName: string;
+  }): void {
+    void this.sendRegistrationEmails(payload).catch((err) => {
+      this.logger.warn(
+        `Mails de registro incompletos: ${err instanceof Error ? err.message : err}`,
+      );
+    });
+  }
+
+  private async sendRegistrationEmails(payload: {
+    tenantEmail: string;
+    tenantName: string;
+    slug: string;
+    phone: string;
+    plan: PlanType;
+    ownerName: string;
+  }): Promise<void> {
+    const url = storePublicUrl(payload.slug);
+    const plan = planLabel(payload.plan);
+    const welcomeSubject = `¡Bienvenido/a a VentaXLink, ${payload.tenantName}!`;
+    const welcomeText = [
+      `Hola ${payload.ownerName},`,
+      ``,
+      `Tu tienda "${payload.tenantName}" ya está creada con el link ${payload.slug}.`,
+      `Plan elegido: ${plan}.`,
+      ``,
+      `Podés entrar al panel: ${adminPanelUrl()}/login`,
+      `Tienda pública: ${url}`,
+      ``,
+      `Si necesitás ayuda, escribinos desde el panel (Soporte comercial en planes Pro/Mayorista).`,
+      ``,
+      `— Equipo VentaXLink`,
+    ].join('\n');
+    const welcomeHtml = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.6;color:#111">
+<p>Hola ${escapeHtml(payload.ownerName)},</p>
+<p>Tu tienda <strong>${escapeHtml(payload.tenantName)}</strong> ya está creada (link <code>${escapeHtml(payload.slug)}</code>).</p>
+<p>Plan: <strong>${escapeHtml(plan)}</strong>.</p>
+<p><a href="${escapeHtml(adminPanelUrl())}/login">Ir al panel</a> · <a href="${escapeHtml(url)}">Ver tienda pública</a></p>
+<p style="color:#666;font-size:14px">— VentaXLink</p>
+</body></html>`;
+
+    await this.sendPlatformEmail({
+      to: payload.tenantEmail,
+      subject: welcomeSubject,
+      text: welcomeText,
+      html: welcomeHtml,
+    });
+
+    const internals = internalNotifyRecipients();
+    if (internals.length === 0) {
+      this.logger.debug(
+        'INTERNAL_NOTIFY_EMAILS no configurado: se omite aviso interno de registro',
+      );
+      return;
+    }
+    const internalSubject = `[VentaXLink] Nuevo comercio: ${payload.tenantName}`;
+    const internalText = [
+      `Se registró un nuevo comercio.`,
+      ``,
+      `Nombre: ${payload.tenantName}`,
+      `Slug: ${payload.slug}`,
+      `Email: ${payload.tenantEmail}`,
+      `Teléfono: ${payload.phone}`,
+      `Plan: ${plan}`,
+      `Titular: ${payload.ownerName}`,
+      ``,
+      `Tienda: ${url}`,
+    ].join('\n');
+    const internalHtml = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.6;color:#111">
+<p><strong>Nuevo registro</strong></p>
+<ul>
+<li>Comercio: ${escapeHtml(payload.tenantName)}</li>
+<li>Slug: <code>${escapeHtml(payload.slug)}</code></li>
+<li>Email: ${escapeHtml(payload.tenantEmail)}</li>
+<li>Tel: ${escapeHtml(payload.phone)}</li>
+<li>Plan: ${escapeHtml(plan)}</li>
+<li>Titular: ${escapeHtml(payload.ownerName)}</li>
+</ul>
+<p><a href="${escapeHtml(url)}">Abrir tienda</a></p>
+</body></html>`;
+    for (const to of internals) {
+      await this.sendPlatformEmail({
+        to,
+        subject: internalSubject,
+        text: internalText,
+        html: internalHtml,
+      });
+    }
+  }
+
+  scheduleCommercialContact(payload: {
+    name: string;
+    commerce: string;
+    message: string;
+    replyEmail?: string;
+  }): void {
+    void this.sendCommercialContact(payload).catch((err) => {
+      this.logger.warn(
+        `Contacto comercial no enviado: ${err instanceof Error ? err.message : err}`,
+      );
+    });
+  }
+
+  private async sendCommercialContact(payload: {
+    name: string;
+    commerce: string;
+    message: string;
+    replyEmail?: string;
+  }): Promise<void> {
+    const to =
+      process.env.CONTACT_FORM_TO_EMAIL?.trim() ||
+      process.env.SUPPORT_INBOX_EMAIL?.trim() ||
+      '';
+    if (!to) {
+      this.logger.warn(
+        'CONTACT_FORM_TO_EMAIL no configurado: no se envía el formulario de contacto',
+      );
+      return;
+    }
+    const subject = `Contacto comercial — ${payload.commerce || 'sin comercio'}`;
+    const text = [
+      `Nombre: ${payload.name}`,
+      `Comercio: ${payload.commerce || '—'}`,
+      payload.replyEmail ? `Responder a: ${payload.replyEmail}` : '',
+      ``,
+      payload.message,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    const html = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.6;color:#111">
+<p><strong>Contacto comercial</strong></p>
+<p>Nombre: ${escapeHtml(payload.name)}<br/>
+Comercio: ${escapeHtml(payload.commerce || '—')}</p>
+${payload.replyEmail ? `<p>Responder a: ${escapeHtml(payload.replyEmail)}</p>` : ''}
+<pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(payload.message)}</pre>
+</body></html>`;
+    await this.sendPlatformEmail({
+      to,
+      subject,
+      text,
+      html,
+      replyTo: payload.replyEmail,
+    });
+
+    const primaryLower = to.toLowerCase();
+    const internals = internalNotifyRecipients().filter(
+      (e) => e.toLowerCase() !== primaryLower,
+    );
+    const copySubject = `[Copia] ${subject}`;
+    for (const inbox of internals) {
+      await this.sendPlatformEmail({
+        to: inbox,
+        subject: copySubject,
+        text,
+        html,
+        replyTo: payload.replyEmail,
+      });
+    }
+  }
+
+  schedulePlanChangeEmail(payload: {
+    tenantEmail: string;
+    tenantName: string;
+    slug: string;
+    oldPlan: PlanType;
+    newPlan: PlanType;
+  }): void {
+    if (payload.oldPlan === payload.newPlan) return;
+    void this.sendPlanChangeEmails(payload).catch((err) => {
+      this.logger.warn(
+        `Mails de cambio de plan incompletos: ${err instanceof Error ? err.message : err}`,
+      );
+    });
+  }
+
+  private async sendPlanChangeEmails(payload: {
+    tenantEmail: string;
+    tenantName: string;
+    slug: string;
+    oldPlan: PlanType;
+    newPlan: PlanType;
+  }): Promise<void> {
+    const url = storePublicUrl(payload.slug);
+    const fromL = planLabel(payload.oldPlan);
+    const toL = planLabel(payload.newPlan);
+    const subject = `[VentaXLink] Cambio de plan: ${payload.tenantName} (${fromL} → ${toL})`;
+    const bodyText = [
+      `Hola,`,
+      ``,
+      `Actualizamos tu plan de "${fromL}" a "${toL}" para la tienda "${payload.tenantName}".`,
+      ``,
+      `Panel: ${adminPanelUrl()}/login`,
+      `Tienda: ${url}`,
+      ``,
+      `Si no pediste este cambio, contactanos.`,
+    ].join('\n');
+    const bodyHtml = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.6;color:#111">
+<p>Tu plan pasó de <strong>${escapeHtml(fromL)}</strong> a <strong>${escapeHtml(toL)}</strong> para <strong>${escapeHtml(payload.tenantName)}</strong>.</p>
+<p><a href="${escapeHtml(adminPanelUrl())}/login">Panel</a> · <a href="${escapeHtml(url)}">Tienda</a></p>
+</body></html>`;
+
+    await this.sendPlatformEmail({
+      to: payload.tenantEmail,
+      subject: `[VentaXLink] Tu plan ahora es ${toL}`,
+      text: bodyText,
+      html: bodyHtml,
+    });
+
+    const internals = internalNotifyRecipients();
+    if (internals.length === 0) return;
+    const internalText = [
+      `Cambio de plan en comercio registrado.`,
+      ``,
+      `Comercio: ${payload.tenantName}`,
+      `Slug: ${payload.slug}`,
+      `Email: ${payload.tenantEmail}`,
+      `Antes: ${fromL} → Ahora: ${toL}`,
+      ``,
+      url,
+    ].join('\n');
+    const internalHtml = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.6;color:#111">
+<p><strong>Cambio de plan</strong></p>
+<ul>
+<li>${escapeHtml(payload.tenantName)} (<code>${escapeHtml(payload.slug)}</code>)</li>
+<li>${escapeHtml(payload.tenantEmail)}</li>
+<li>${escapeHtml(fromL)} → ${escapeHtml(toL)}</li>
+</ul>
+<p><a href="${escapeHtml(url)}">Tienda</a></p>
+</body></html>`;
+    for (const to of internals) {
+      await this.sendPlatformEmail({
+        to,
+        subject,
+        text: internalText,
+        html: internalHtml,
+      });
+    }
+  }
+
+  /** Aviso al comercio X días antes de plan_expires_at (usa SMTP del tenant o global). */
+  async sendPlanExpiryWarningEmail(payload: {
+    tenantEmail: string;
+    tenantName: string;
+    slug: string;
+    planExpiresAt: Date;
+    tenantSmtp: TenantSmtpForMail | null;
+  }): Promise<boolean> {
+    const to = payload.tenantEmail.trim();
+    const fecha = payload.planExpiresAt.toLocaleDateString('es-AR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const url = storePublicUrl(payload.slug);
+    const panel = adminPanelUrl();
+    const subject = `[VentaXLink] Tu plan vence pronto (${fecha})`;
+    const text = [
+      `Hola,`,
+      ``,
+      `Te recordamos que la fecha de renovación de tu plan para "${payload.tenantName}" es el ${fecha}.`,
+      ``,
+      `Tienda: ${url}`,
+      `Panel: ${panel}/login`,
+      ``,
+      `Si ya abonaste, podés ignorar este mensaje.`,
+    ].join('\n');
+    const html = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.6;color:#111">
+<p>Hola,</p>
+<p>La renovación de tu plan para <strong>${escapeHtml(payload.tenantName)}</strong> está prevista para el <strong>${escapeHtml(fecha)}</strong>.</p>
+<p><a href="${escapeHtml(url)}">Ver tienda</a> · <a href="${escapeHtml(panel)}/login">Panel</a></p>
+<p style="color:#666;font-size:14px">Si ya pagaste, ignorá este aviso.</p>
+</body></html>`;
+
+    const ok = await this.sendBillingReminderEmail({
+      toEmail: to,
+      tenantSmtp: payload.tenantSmtp,
+      subject,
+      text,
+      html,
+    });
+    if (ok) return true;
+    return this.sendPlatformEmail({ to, subject, text, html });
   }
 }
