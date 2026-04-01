@@ -39,6 +39,7 @@
     "db:seed": "npm run seed -w @ventaxlink/database",
     "clean:apps": "node -e \"const fs=require('fs'),p=require('path');for(const a of['web','admin','store']){const d=p.join('apps',a,'node_modules');try{fs.rmSync(d,{recursive:true,force:true});console.log('removed',d)}catch(e){console.log(d,e.message)}}\"",
     "clean:next": "node scripts/clean-next.cjs",
+    "test:product-images": "node scripts/test-product-images.cjs",
     "dev:web": "turbo dev --filter=@ventaxlink/web"
   },
   "devDependencies": {

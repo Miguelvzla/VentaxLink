@@ -139,7 +139,12 @@ export class StoreService {
     };
   }
 
-  async listProducts(slug: string, page: number, limit: number) {
+  async listProducts(
+    slug: string,
+    page: number,
+    limit: number,
+    searchRaw?: string,
+  ) {
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     const safePage = Math.max(page, 1);
     const tenant = await this.prisma.tenant.findFirst({
@@ -150,20 +155,33 @@ export class StoreService {
       throw new NotFoundException('Tienda no encontrada');
     }
 
+    const searchTerm = searchRaw?.trim().slice(0, 120) || undefined;
+    const searchOr: Prisma.ProductWhereInput | undefined = searchTerm
+      ? {
+          OR: [
+            { name: { contains: searchTerm, mode: 'insensitive' } },
+            { short_desc: { contains: searchTerm, mode: 'insensitive' } },
+            { slug: { contains: searchTerm, mode: 'insensitive' } },
+          ],
+        }
+      : undefined;
+
     const suspended = tenant.status === TenantStatus.SUSPENDED;
     const whereBase: Prisma.ProductWhereInput = {
       tenant_id: tenant.id,
       is_active: true,
+      ...(searchOr ?? {}),
     };
 
     let where: Prisma.ProductWhereInput = whereBase;
     if (suspended) {
       const ids = await this.visibleProductIdsForSuspended(tenant.id);
-      where = { ...whereBase, id: { in: [...ids] } };
+      where = { AND: [whereBase, { id: { in: [...ids] } }] };
     }
 
-    const [fullTotal, rows] = await this.prisma.$transaction([
+    const [fullTotal, listedTotal, rows] = await this.prisma.$transaction([
       this.prisma.product.count({ where: whereBase }),
+      this.prisma.product.count({ where }),
       this.prisma.product.findMany({
         where,
         orderBy: [
@@ -193,9 +211,11 @@ export class StoreService {
       }),
     ]);
 
-    const displayTotal = suspended
-      ? Math.min(CATALOG_CAP_SUSPENDED, fullTotal)
-      : fullTotal;
+    const displayTotal = searchTerm
+      ? listedTotal
+      : suspended
+        ? Math.min(CATALOG_CAP_SUSPENDED, fullTotal)
+        : fullTotal;
 
     return {
       data: rows.map((p) => ({

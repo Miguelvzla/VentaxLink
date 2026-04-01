@@ -36,8 +36,9 @@ export class StoreController {
     @Param('slug') slug: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(24), ParseIntPipe) limit: number,
+    @Query('q') q?: string,
   ) {
-    return this.store.listProducts(slug, page, limit);
+    return this.store.listProducts(slug, page, limit, q);
   }
 
   @Get(':slug')

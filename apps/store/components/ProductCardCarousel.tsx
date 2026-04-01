@@ -1,23 +1,45 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { filterRenderableProductImages } from "@/lib/product-images";
 
 type Img = { url: string; alt: string | null };
 
 export function ProductCardCarousel({ images, name }: { images: Img[]; name: string }) {
+  const list = useMemo(() => filterRenderableProductImages(images), [images]);
   const [idx, setIdx] = useState(0);
-  const current = images[idx];
+
+  useEffect(() => {
+    if (list.length === 0) {
+      setIdx(0);
+      return;
+    }
+    setIdx((i) => Math.min(i, list.length - 1));
+  }, [list.length]);
+
+  const current = list[idx];
 
   if (!current) {
-    return <div className="flex h-full items-center justify-center text-4xl text-gray-300">📦</div>;
+    return (
+      <div className="pointer-events-none flex h-full items-center justify-center text-4xl text-gray-300">
+        📦
+      </div>
+    );
   }
 
-  const many = images.length > 1;
+  const many = list.length > 1;
+  const controlBtn =
+    "pointer-events-auto absolute z-[2] rounded-full bg-black/35 px-2 py-1 text-white";
 
   return (
-    <>
-      <Image src={current.url} alt={current.alt || name} fill className="object-cover" />
+    <div className="relative h-full w-full pointer-events-none">
+      <Image
+        src={current.url}
+        alt={current.alt || name}
+        fill
+        className="object-cover pointer-events-none"
+      />
       {many ? (
         <>
           <button
@@ -25,9 +47,9 @@ export function ProductCardCarousel({ images, name }: { images: Img[]; name: str
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setIdx((i) => (i - 1 + images.length) % images.length);
+              setIdx((i) => (i - 1 + list.length) % list.length);
             }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/35 px-2 py-1 text-white"
+            className={`${controlBtn} left-2 top-1/2 -translate-y-1/2`}
             aria-label="Imagen anterior"
           >
             ‹
@@ -37,15 +59,15 @@ export function ProductCardCarousel({ images, name }: { images: Img[]; name: str
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setIdx((i) => (i + 1) % images.length);
+              setIdx((i) => (i + 1) % list.length);
             }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/35 px-2 py-1 text-white"
+            className={`${controlBtn} right-2 top-1/2 -translate-y-1/2`}
             aria-label="Imagen siguiente"
           >
             ›
           </button>
-          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1">
-            {images.map((im, i) => (
+          <div className="pointer-events-auto absolute bottom-2 left-1/2 z-[2] flex -translate-x-1/2 gap-1">
+            {list.map((im, i) => (
               <button
                 key={`${im.url}-${i}`}
                 type="button"
@@ -61,6 +83,6 @@ export function ProductCardCarousel({ images, name }: { images: Img[]; name: str
           </div>
         </>
       ) : null}
-    </>
+    </div>
   );
 }

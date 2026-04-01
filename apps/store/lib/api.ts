@@ -137,8 +137,15 @@ export async function fetchProduct(slug: string, pSlug: string) {
   return (await res.json()) as { data: ProductDetail };
 }
 
-export async function fetchProducts(slug: string, page = 1, limit = 24) {
+export async function fetchProducts(
+  slug: string,
+  page = 1,
+  limit = 24,
+  search?: string | null,
+) {
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
+  const s = search?.trim();
+  if (s) q.set("q", s.slice(0, 120));
   let res: Response;
   try {
     res = await fetch(`${apiBase()}/store/${slug}/products?${q}`, {

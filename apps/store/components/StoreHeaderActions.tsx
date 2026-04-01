@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { StoreCartNav } from "@/components/StoreCartNav";
+import { StoreShareButton } from "@/components/StoreShareButton";
 import { StoreSocialIcons } from "@/components/StoreSocialIcons";
 import type { PublicTenant } from "@/lib/api";
 
@@ -47,6 +48,7 @@ export function StoreHeaderActions({ tenant, slug, waHref, primaryColor }: Props
         <div className="min-w-0 max-w-full overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] lg:max-w-[min(100%,28rem)] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max flex-nowrap items-center gap-2 pb-0.5 lg:justify-end">
             <StoreSocialIcons tenant={tenant} waHref={waHref} variant="header" compact />
+            <StoreShareButton slug={slug} storeName={tenant.name} compact />
           </div>
         </div>
         <nav
@@ -68,6 +70,7 @@ export function StoreHeaderActions({ tenant, slug, waHref, primaryColor }: Props
         <div className="min-w-0 flex-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max flex-nowrap items-center gap-2 pb-0.5">
             <StoreSocialIcons tenant={tenant} waHref={waHref} variant="header" compact />
+            <StoreShareButton slug={slug} storeName={tenant.name} compact />
           </div>
         </div>
         <button

@@ -6,6 +6,7 @@ import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { ProductShareButton } from "@/components/ProductShareButton";
 import { ProductViewTracker } from "@/components/ProductViewTracker";
 import { estimateProductPoints, fetchProduct, fetchTenant } from "@/lib/api";
+import { filterRenderableProductImages } from "@/lib/product-images";
 
 function formatArs(value: string) {
   const n = Number(value);
@@ -25,11 +26,12 @@ export default async function ProductoDetallePage({
 
   const { data: p } = productRes;
   const base = Number(p.price);
-  const images = p.images.length ? p.images : [];
+  const images = filterRenderableProductImages(p.images);
   const canUseCarousel =
     (tenant.plan === "PRO" || tenant.plan === "WHOLESALE") && images.length > 1;
   const pts = estimateProductPoints(tenant, p.price);
   const trackProductViews = tenant.plan === "PRO" || tenant.plan === "WHOLESALE";
+  const productHref = `/tienda/${slug}/productos/${p.slug}`;
 
   return (
     <div>
@@ -47,22 +49,39 @@ export default async function ProductoDetallePage({
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
         <div className="space-y-3">
           {canUseCarousel ? (
-            <ProductImageCarousel images={images} productName={p.name} />
+            <ProductImageCarousel
+              images={images}
+              productName={p.name}
+              productHref={productHref}
+            />
           ) : (
             <div className="relative aspect-square overflow-hidden rounded-2xl bg-[#F3F4F6]">
-              {images[0] ? (
-                <Image src={images[0].url} alt={images[0].alt || p.name} fill className="object-cover" />
-              ) : (
-                <div className="flex h-full items-center justify-center text-6xl text-gray-300">📦</div>
-              )}
+              <Link href={productHref} className="absolute inset-0 z-0" aria-label={`Ver ${p.name}`} />
+              <div className="pointer-events-none relative z-[1] h-full w-full">
+                {images[0] ? (
+                  <Image
+                    src={images[0].url}
+                    alt={images[0].alt || p.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-6xl text-gray-300">📦</div>
+                )}
+              </div>
             </div>
           )}
           {!canUseCarousel && images.length > 1 ? (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {images.slice(1).map((im) => (
-                <div key={im.url} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg">
+                <Link
+                  key={im.url}
+                  href={productHref}
+                  className="relative z-[1] block h-20 w-20 shrink-0 overflow-hidden rounded-lg ring-1 ring-gray-100 transition hover:ring-2 hover:ring-[#2563EB]/40"
+                  aria-label={`Ver ${p.name}`}
+                >
                   <Image src={im.url} alt={im.alt || ""} fill className="object-cover" />
-                </div>
+                </Link>
               ))}
             </div>
           ) : null}
