@@ -150,6 +150,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               Subir plan
             </Link>
           </div>
+          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Menú móvil del panel">
+            {visibleNav.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-[#374151]"
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+                {label}
+              </Link>
+            ))}
+          </nav>
         </header>
         <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>

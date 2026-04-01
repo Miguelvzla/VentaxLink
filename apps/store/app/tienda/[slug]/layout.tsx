@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { StoreFooter } from "@/components/StoreFooter";
+import { FloatingCartBar } from "@/components/FloatingCartBar";
 import { StoreHeader } from "@/components/StoreHeader";
 import { StoreVisitTracker } from "@/components/StoreVisitTracker";
 import { fetchTenant } from "@/lib/api";
@@ -94,6 +95,7 @@ export default async function TiendaLayout({
         </div>
       ) : null}
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">{children}</div>
+      <FloatingCartBar slug={slug} primaryColor={tenant.primary_color} />
       <StoreFooter tenant={tenant} />
     </div>
   );

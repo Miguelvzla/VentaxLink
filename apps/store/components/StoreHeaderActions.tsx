@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { StoreCartNav } from "@/components/StoreCartNav";
 import { StoreSocialIcons } from "@/components/StoreSocialIcons";
 import type { PublicTenant } from "@/lib/api";
@@ -15,6 +16,11 @@ type Props = {
 
 export function StoreHeaderActions({ tenant, slug, waHref, primaryColor }: Props) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;

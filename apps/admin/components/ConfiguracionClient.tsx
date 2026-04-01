@@ -98,9 +98,7 @@ export function ConfiguracionClient() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
-  const [newCallmebotKey, setNewCallmebotKey] = useState("");
   const [newSmtpPass, setNewSmtpPass] = useState("");
-  const [showCallmebotKey, setShowCallmebotKey] = useState(false);
   const [showSmtpPass, setShowSmtpPass] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [bannerUploading, setBannerUploading] = useState(false);
@@ -185,9 +183,6 @@ export function ConfiguracionClient() {
         smtp_from_email: form.smtp_from_email.trim() || null,
         smtp_from_name: form.smtp_from_name.trim() || null,
       };
-      if (newCallmebotKey.trim()) {
-        body.notify_callmebot_apikey = newCallmebotKey.trim();
-      }
       if (newSmtpPass.trim()) {
         body.smtp_pass = newSmtpPass.trim();
       }
@@ -219,7 +214,6 @@ export function ConfiguracionClient() {
       }
       const res = await patchJson<MeResponse>("/tenant/me", token, body);
       setForm(tenantToForm(res.data));
-      setNewCallmebotKey("");
       setNewSmtpPass("");
       mergeStoredTenant({
         name: res.data.name,
@@ -231,19 +225,6 @@ export function ConfiguracionClient() {
       setError(err instanceof Error ? err.message : "No se pudo guardar");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function removeCallmebotKey() {
-    if (!token) return;
-    if (!window.confirm("¿Quitar la clave CallMeBot de este comercio?")) return;
-    setError(null);
-    try {
-      await patchJson<MeResponse>("/tenant/me", token, { clear_notify_callmebot_apikey: true });
-      await load();
-      setOk(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo quitar la clave");
     }
   }
 
@@ -330,24 +311,42 @@ export function ConfiguracionClient() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-[#374151]">Color principal (#RRGGBB)</label>
-              <input
-                required
-                pattern="^#[0-9A-Fa-f]{6}$"
-                value={form.primary_color}
-                onChange={(e) => setForm((f) => (f ? { ...f, primary_color: e.target.value } : f))}
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-              />
+              <label className="mb-1 block text-sm font-medium text-[#374151]">Color principal</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={form.primary_color}
+                  onChange={(e) => setForm((f) => (f ? { ...f, primary_color: e.target.value.toUpperCase() } : f))}
+                  className="h-11 w-14 cursor-pointer rounded-xl border border-gray-200 bg-white p-1"
+                />
+                <input
+                  required
+                  pattern="^#[0-9A-Fa-f]{6}$"
+                  value={form.primary_color}
+                  onChange={(e) => setForm((f) => (f ? { ...f, primary_color: e.target.value } : f))}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
+                />
+              </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-[#374151]">Color secundario (#RRGGBB)</label>
-              <input
-                required
-                pattern="^#[0-9A-Fa-f]{6}$"
-                value={form.secondary_color}
-                onChange={(e) => setForm((f) => (f ? { ...f, secondary_color: e.target.value } : f))}
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-              />
+              <label className="mb-1 block text-sm font-medium text-[#374151]">Color secundario</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={form.secondary_color}
+                  onChange={(e) =>
+                    setForm((f) => (f ? { ...f, secondary_color: e.target.value.toUpperCase() } : f))
+                  }
+                  className="h-11 w-14 cursor-pointer rounded-xl border border-gray-200 bg-white p-1"
+                />
+                <input
+                  required
+                  pattern="^#[0-9A-Fa-f]{6}$"
+                  value={form.secondary_color}
+                  onChange={(e) => setForm((f) => (f ? { ...f, secondary_color: e.target.value } : f))}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
+                />
+              </div>
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-[#374151]">Logo (URL o archivo)</label>
@@ -384,7 +383,7 @@ export function ConfiguracionClient() {
                 onClick={() => logoFileRef.current?.click()}
                 className="mt-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-[#374151] hover:bg-gray-50 disabled:opacity-50"
               >
-                {logoUploading ? "Subiendo…" : "Subir logo desde la PC"}
+                {logoUploading ? "Subiendo…" : "Subir Logo"}
               </button>
             </div>
             <div className="sm:col-span-2">
@@ -422,93 +421,12 @@ export function ConfiguracionClient() {
                 onClick={() => bannerFileRef.current?.click()}
                 className="mt-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-[#374151] hover:bg-gray-50 disabled:opacity-50"
               >
-                {bannerUploading ? "Subiendo…" : "Subir banner desde la PC"}
+                {bannerUploading ? "Subiendo…" : "Subir Banner"}
               </button>
             </div>
           </section>
 
-          <section className="border-t border-gray-100 pt-6">
-            <h2 className="font-semibold text-[#111827]">Avisos cuando hay un pedido nuevo</h2>
-            <p className="mt-2 text-sm text-[#6B7280]">
-              Cuando un cliente confirma el carrito, el sistema intenta avisar por e-mail al comercio (a{" "}
-              <span className="font-mono">{form.email}</span>) usando el SMTP que cargaste arriba o el del servidor.
-              Opcionalmente podés activar WhatsApp al comercio con CallMeBot.
-            </p>
-            <div className="mt-4 space-y-4 rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-sm text-[#78350F]">
-              <p>
-                <strong>E-mail al comercio:</strong> si tu SMTP está completo, los correos salen desde tu casilla; si
-                no, hace falta <span className="font-mono text-xs">SMTP_*</span> y{" "}
-                <span className="font-mono text-xs">MAIL_FROM</span> en el servidor.
-              </p>
-              <p>
-                <strong>WhatsApp:</strong> seguí la guía de{" "}
-                <a
-                  href="https://www.callmebot.com/blog/free-api-whatsapp/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-[#B45309] underline"
-                >
-                  CallMeBot
-                </a>{" "}
-                para obtener una clave. El mensaje se envía al número de WhatsApp o teléfono que cargaste abajo (ideal:
-                el mismo donde recibís pedidos).
-              </p>
-              <p className="text-xs">
-                Estado integración WhatsApp:{" "}
-                <strong>{form.notify_whatsapp_configured ? "configurada" : "no configurada"}</strong>
-                {form.notify_whatsapp_configured
-                  ? " (clave propia o del servidor)"
-                  : " — guardá una clave abajo o pedí que configuren CALLMEBOT_API_KEY en el servidor."}
-              </p>
-            </div>
-            <label className="mt-4 flex items-center gap-2 text-sm text-[#374151]">
-              <input
-                type="checkbox"
-                checked={form.auto_whatsapp}
-                onChange={(e) => setForm((f) => (f ? { ...f, auto_whatsapp: e.target.checked } : f))}
-              />
-              Enviar aviso automático por WhatsApp al comercio (si está configurado)
-            </label>
-            <div className="mt-4">
-              <label className="mb-1 block text-sm font-medium text-[#374151]">
-                Nueva clave CallMeBot (opcional)
-              </label>
-              <div className="relative">
-                <input
-                  type={showCallmebotKey ? "text" : "password"}
-                  autoComplete="off"
-                  value={newCallmebotKey}
-                  onChange={(e) => setNewCallmebotKey(e.target.value)}
-                  placeholder="Pegá acá solo si querés cambiar o agregar la clave"
-                  className="w-full rounded-xl border border-gray-200 py-2.5 pl-4 pr-12 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCallmebotKey((v) => !v)}
-                  className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-[#6B7280] hover:bg-gray-100 hover:text-[#111827]"
-                  aria-label={showCallmebotKey ? "Ocultar clave" : "Mostrar clave"}
-                >
-                  {showCallmebotKey ? (
-                    <EyeOff className="h-5 w-5" aria-hidden />
-                  ) : (
-                    <Eye className="h-5 w-5" aria-hidden />
-                  )}
-                </button>
-              </div>
-              <p className="mt-1 text-xs text-[#9CA3AF]">
-                Se guarda al pulsar &quot;Guardar cambios&quot;. No mostramos la clave actual por seguridad.
-              </p>
-            </div>
-            {form.notify_whatsapp_configured ? (
-              <button
-                type="button"
-                onClick={() => void removeCallmebotKey()}
-                className="mt-3 text-sm font-medium text-red-600 hover:underline"
-              >
-                Quitar clave CallMeBot de este comercio
-              </button>
-            ) : null}
-          </section>
+          {/* Se oculta sección de avisos de pedido por requerimiento de producto. */}
 
           <section className="border-t border-gray-100 pt-6">
             <h2 className="font-semibold text-[#111827]">Contacto</h2>
@@ -661,120 +579,7 @@ export function ConfiguracionClient() {
             ) : null}
           </section>
 
-          {form.plan === "PRO" || form.plan === "WHOLESALE" ? (
-            <section className="border-t border-gray-100 pt-6">
-              <h2 className="font-semibold text-[#111827]">Recordatorio mensual de cobro</h2>
-              <p className="mt-2 text-sm text-[#6B7280]">
-                Un correo al mes al email del comercio con los datos de pago y texto que configures. Requiere SMTP
-                (arriba o del servidor). La hora es la del servidor donde corre la API (cron cada hora).
-              </p>
-              <p className="mt-2 text-sm text-[#6B7280]">
-                El <strong>vencimiento del plan</strong> se renueva solo mes a mes el día y hora que indiques (si no
-                cargás día/hora, se usa día <strong>1</strong> a las <strong>9</strong>). Comercios suspendidos no
-                renuevan hasta reactivarlos.
-              </p>
-              <p className="mt-2 text-xs text-[#9CA3AF]">
-                Variables en asunto y descripción:{" "}
-                <code className="rounded bg-gray-100 px-1">{"{{comercio}}"}</code>,{" "}
-                <code className="rounded bg-gray-100 px-1">{"{{alias}}"}</code> /{" "}
-                <code className="rounded bg-gray-100 px-1">{"{{pago}}"}</code>,{" "}
-                <code className="rounded bg-gray-100 px-1">{"{{plan_vence}}"}</code>,{" "}
-                <code className="rounded bg-gray-100 px-1">{"{{mes}}"}</code>
-              </p>
-              {form.last_billing_reminder_sent_at ? (
-                <p className="mt-2 text-xs text-[#6B7280]">
-                  Último envío:{" "}
-                  {new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" }).format(
-                    new Date(form.last_billing_reminder_sent_at),
-                  )}
-                </p>
-              ) : (
-                <p className="mt-2 text-xs text-[#9CA3AF]">Todavía no se registró un envío automático.</p>
-              )}
-              <label className="mt-4 flex items-center gap-2 text-sm text-[#374151]">
-                <input
-                  type="checkbox"
-                  checked={form.billing_reminder_enabled}
-                  onChange={(e) =>
-                    setForm((f) => (f ? { ...f, billing_reminder_enabled: e.target.checked } : f))
-                  }
-                />
-                Activar envío automático mensual
-              </label>
-              {form.billing_reminder_enabled ? (
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-[#374151]">
-                      Día del mes (1–28)
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={28}
-                      value={form.billing_reminder_day_of_month}
-                      onChange={(e) =>
-                        setForm((f) => (f ? { ...f, billing_reminder_day_of_month: e.target.value } : f))
-                      }
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-[#374151]">
-                      Hora (0–23)
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={23}
-                      value={form.billing_reminder_hour}
-                      onChange={(e) =>
-                        setForm((f) => (f ? { ...f, billing_reminder_hour: e.target.value } : f))
-                      }
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="mb-1 block text-sm font-medium text-[#374151]">Asunto</label>
-                    <input
-                      value={form.billing_reminder_subject}
-                      onChange={(e) =>
-                        setForm((f) => (f ? { ...f, billing_reminder_subject: e.target.value } : f))
-                      }
-                      placeholder="Cobro mensual VentaXLink — {{comercio}}"
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="mb-1 block text-sm font-medium text-[#374151]">
-                      Descripción del mail (texto)
-                    </label>
-                    <textarea
-                      rows={8}
-                      value={form.billing_reminder_body}
-                      onChange={(e) =>
-                        setForm((f) => (f ? { ...f, billing_reminder_body: e.target.value } : f))
-                      }
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="mb-1 block text-sm font-medium text-[#374151]">
-                      Alias / CBU / instrucciones de pago
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={form.billing_payment_alias}
-                      onChange={(e) =>
-                        setForm((f) => (f ? { ...f, billing_payment_alias: e.target.value } : f))
-                      }
-                      placeholder="CVU, alias, titular…"
-                      className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                    />
-                  </div>
-                </div>
-              ) : null}
-            </section>
-          ) : null}
+          {/* Se oculta sección de recordatorio mensual por requerimiento de producto. */}
 
           <section className="border-t border-gray-100 pt-6">
             <h2 className="font-semibold text-[#111827]">Redes</h2>

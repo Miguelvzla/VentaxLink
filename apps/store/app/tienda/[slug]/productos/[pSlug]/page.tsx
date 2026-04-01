@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductAddToCart } from "@/components/ProductAddToCart";
+import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { ProductViewTracker } from "@/components/ProductViewTracker";
 import { estimateProductPoints, fetchProduct, fetchTenant } from "@/lib/api";
 
@@ -24,6 +25,8 @@ export default async function ProductoDetallePage({
   const { data: p } = productRes;
   const base = Number(p.price);
   const images = p.images.length ? p.images : [];
+  const canUseCarousel =
+    (tenant.plan === "PRO" || tenant.plan === "WHOLESALE") && images.length > 1;
   const pts = estimateProductPoints(tenant, p.price);
   const trackProductViews = tenant.plan === "PRO" || tenant.plan === "WHOLESALE";
 
@@ -39,14 +42,18 @@ export default async function ProductoDetallePage({
 
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
         <div className="space-y-3">
-          <div className="relative aspect-square overflow-hidden rounded-2xl bg-[#F3F4F6]">
-            {images[0] ? (
-              <Image src={images[0].url} alt={images[0].alt || p.name} fill className="object-cover" />
-            ) : (
-              <div className="flex h-full items-center justify-center text-6xl text-gray-300">📦</div>
-            )}
-          </div>
-          {images.length > 1 ? (
+          {canUseCarousel ? (
+            <ProductImageCarousel images={images} productName={p.name} />
+          ) : (
+            <div className="relative aspect-square overflow-hidden rounded-2xl bg-[#F3F4F6]">
+              {images[0] ? (
+                <Image src={images[0].url} alt={images[0].alt || p.name} fill className="object-cover" />
+              ) : (
+                <div className="flex h-full items-center justify-center text-6xl text-gray-300">📦</div>
+              )}
+            </div>
+          )}
+          {!canUseCarousel && images.length > 1 ? (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {images.slice(1).map((im) => (
                 <div key={im.url} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg">
