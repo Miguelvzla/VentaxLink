@@ -10,6 +10,7 @@ import {
   maxImagesPerProductForPlan,
 } from '../common/plan-limits';
 import { PrismaService } from '../prisma/prisma.service';
+import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
@@ -84,7 +85,9 @@ export class ProductsService {
 
   private serializeAdminProduct(p: ProductAdminRow) {
     const { images, ...rest } = p;
-    const urls = images.map((i) => i.url).filter(Boolean);
+    const urls = images
+      .map((i) => rewriteStoredUploadsUrl(i.url) ?? i.url)
+      .filter(Boolean);
     return {
       ...this.serializeProduct(rest),
       primary_image_url: urls[0] ?? null,

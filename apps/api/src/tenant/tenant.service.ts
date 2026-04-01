@@ -8,6 +8,7 @@ import {
 import { PlanType, Prisma } from '@prisma/client';
 import { OrderNotificationsService } from '../notifications/order-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
 const tenantMeSelect = {
@@ -85,6 +86,8 @@ export class TenantService {
     return {
       data: {
         ...pub,
+        logo_url: rewriteStoredUploadsUrl(pub.logo_url),
+        banner_url: rewriteStoredUploadsUrl(pub.banner_url),
         points_ars_per_point: ptsArs != null ? ptsArs.toString() : null,
         points_redeem_percent: ptsPct != null ? ptsPct.toString() : null,
         notify_whatsapp_configured: hasKey,

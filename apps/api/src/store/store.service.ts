@@ -8,6 +8,7 @@ import { OrderNotificationsService } from '../notifications/order-notifications.
 import type { TenantSmtpForMail } from '../notifications/order-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { productDetailViewsAnalyticsForPlan } from '../common/plan-limits';
+import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
 import { CheckoutDto } from './dto/checkout.dto';
 import { TrackEventDto } from './dto/track-event.dto';
 
@@ -117,6 +118,8 @@ export class StoreService {
     return {
       data: {
         ...tenant,
+        logo_url: rewriteStoredUploadsUrl(tenant.logo_url),
+        banner_url: rewriteStoredUploadsUrl(tenant.banner_url),
         catalog_limited: suspended,
         catalog_visible_cap: suspended ? CATALOG_CAP_SUSPENDED : null,
         catalog_total_products: suspended ? totalProducts : null,
@@ -199,6 +202,10 @@ export class StoreService {
         ...p,
         price: p.price.toString(),
         compare_price: p.compare_price?.toString() ?? null,
+        images: p.images.map((im) => ({
+          ...im,
+          url: rewriteStoredUploadsUrl(im.url) ?? im.url,
+        })),
       })),
       meta: {
         total: displayTotal,
@@ -260,7 +267,10 @@ export class StoreService {
         track_stock: product.track_stock,
         weight: product.weight,
         tags: product.tags,
-        images: product.images,
+        images: product.images.map((im) => ({
+          ...im,
+          url: rewriteStoredUploadsUrl(im.url) ?? im.url,
+        })),
         variants: product.variants.map((v) => ({
           id: v.id,
           name: v.name,

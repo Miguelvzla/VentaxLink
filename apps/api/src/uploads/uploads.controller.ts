@@ -14,6 +14,7 @@ import { mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { JwtAuthGuard, JwtUserPayload } from '../auth/jwt-auth.guard';
+import { buildUploadsPublicUrl } from './public-asset-url';
 import { resolveUploadsRoot } from './uploads-path';
 
 const uploadsRoot = resolveUploadsRoot();
@@ -23,10 +24,7 @@ function buildPublicFileUrl(
   req: { protocol: string; get: (h: string) => string | undefined },
   rel: string,
 ) {
-  const base =
-    process.env.PUBLIC_API_URL?.replace(/\/$/, '') ||
-    `${req.protocol}://${req.get('host')}`;
-  return `${base}/v1/uploads/${rel}`;
+  return buildUploadsPublicUrl(rel, req);
 }
 
 function tenantUploadDir(req: unknown) {
