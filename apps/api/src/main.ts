@@ -115,12 +115,20 @@ async function bootstrap() {
     legacyHeaders: false,
     skip: skipOptions,
   });
+  const mailTestLimiter = rateLimit({
+    windowMs: Number(process.env.RATE_LIMIT_MAIL_TEST_WINDOW_MS || 900_000),
+    max: Number(process.env.RATE_LIMIT_MAIL_TEST_MAX || 5),
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: skipOptions,
+  });
 
   app.use('/v1', globalLimiter);
   app.use('/v1/auth/login', authLoginLimiter);
   app.use('/v1/auth/register', authRegisterLimiter);
   app.use('/v1/store/:slug/checkout', checkoutLimiter);
   app.use('/v1/store/:slug/track', trackLimiter);
+  app.use('/v1/store/:slug/mail-test', mailTestLimiter);
   app.use('/v1/public/contact', contactLimiter);
 
   const requestTimeoutMs = Number(process.env.REQUEST_TIMEOUT_MS || 15_000);
@@ -130,7 +138,9 @@ async function bootstrap() {
   app.use((req, res, next) => {
     const path = req.path || '';
     const ms =
-      path.includes('/public/contact') ? contactTimeoutMs : requestTimeoutMs;
+      path.includes('/public/contact') || path.includes('/mail-test')
+        ? contactTimeoutMs
+        : requestTimeoutMs;
     req.setTimeout(ms);
     res.setTimeout(ms);
     next();

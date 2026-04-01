@@ -26,6 +26,12 @@ export class StoreController {
     return this.store.trackEvent(slug, dto);
   }
 
+  /** Prueba SMTP global (Railway). Solo Pro/Mayorista y con ENABLE_STORE_SMTP_TEST=1 */
+  @Post(':slug/mail-test')
+  mailTest(@Param('slug') slug: string) {
+    return this.store.sendProMailTest(slug);
+  }
+
   @Get(':slug/products/:pSlug')
   product(@Param('slug') slug: string, @Param('pSlug') pSlug: string) {
     return this.store.getProduct(slug, pSlug);

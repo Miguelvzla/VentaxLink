@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProMailTestButton } from "@/components/ProMailTestButton";
 import { ProductCard } from "@/components/ProductCard";
 import { StoreCatalogSearch } from "@/components/StoreCatalogSearch";
 import { estimateProductPoints, fetchProducts, fetchTenant } from "@/lib/api";
@@ -21,6 +22,13 @@ export default async function TiendaHomePage({ params }: { params: Promise<{ slu
         <p className="mb-3 text-sm font-medium text-[#374151]">Buscar productos</p>
         <StoreCatalogSearch slug={slug} primaryColor={tenant.primary_color} id="store-home-search" />
       </section>
+
+      <ProMailTestButton
+        slug={slug}
+        primaryColor={tenant.primary_color}
+        plan={tenant.plan}
+        mailTestAvailable={tenant.mail_test_available === true}
+      />
 
       <section>
         <div className="flex items-end justify-between gap-4">

@@ -1,6 +1,9 @@
 import {
+  BadGatewayException,
   BadRequestException,
+  ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CouponType, PlanType, Prisma, TenantStatus } from '@prisma/client';
@@ -75,8 +78,25 @@ function tenantSmtpFromRow(t: {
   };
 }
 
+function escapeHtmlStore(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function redactEmailHint(email: string): string {
+  const [u, d] = email.split('@');
+  if (!d) return '***';
+  const left = u.length <= 2 ? '*' : `${u.slice(0, 2)}…`;
+  return `${left}@${d}`;
+}
+
 @Injectable()
 export class StoreService {
+  private readonly logger = new Logger(StoreService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly orderNotifications: OrderNotificationsService,
@@ -120,6 +140,9 @@ export class StoreService {
         ...tenant,
         logo_url: rewriteStoredUploadsUrl(tenant.logo_url),
         banner_url: rewriteStoredUploadsUrl(tenant.banner_url),
+        mail_test_available:
+          process.env.ENABLE_STORE_SMTP_TEST === '1' ||
+          process.env.ENABLE_STORE_SMTP_TEST === 'true',
         catalog_limited: suspended,
         catalog_visible_cap: suspended ? CATALOG_CAP_SUSPENDED : null,
         catalog_total_products: suspended ? totalProducts : null,
@@ -136,6 +159,117 @@ export class StoreService {
             : null,
         points_redeem_cost: pe ? tenant.points_redeem_cost : null,
       },
+    };
+  }
+
+  /**
+   * Envío de prueba usando solo SMTP global (MAIL_FROM / SMTP_* de Railway).
+   * Destino: MAIL_TEST_TO o email del comercio en BD.
+   */
+  async sendProMailTest(slug: string) {
+    const enabled =
+      process.env.ENABLE_STORE_SMTP_TEST === '1' ||
+      process.env.ENABLE_STORE_SMTP_TEST === 'true';
+    if (!enabled) {
+      this.logger.warn(
+        `[mail-test] rechazado: ENABLE_STORE_SMTP_TEST no está en true (slug=${slug})`,
+      );
+      throw new ForbiddenException(
+        'La prueba de correo no está habilitada en el servidor. En Railway agregá ENABLE_STORE_SMTP_TEST=true en el servicio de la API.',
+      );
+    }
+
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { slug, status: { not: 'CANCELLED' } },
+      select: { plan: true, email: true, name: true },
+    });
+    if (!tenant) {
+      throw new NotFoundException('Tienda no encontrada');
+    }
+    if (
+      tenant.plan !== PlanType.PRO &&
+      tenant.plan !== PlanType.WHOLESALE
+    ) {
+      this.logger.warn(
+        `[mail-test] rechazado: plan ${tenant.plan} (slug=${slug})`,
+      );
+      throw new ForbiddenException(
+        'Solo tiendas con plan Pro o Mayorista pueden usar la prueba de correo.',
+      );
+    }
+
+    const toRaw =
+      process.env.MAIL_TEST_TO?.trim() || tenant.email?.trim() || '';
+    if (!toRaw) {
+      this.logger.warn(
+        `[mail-test] sin destino: MAIL_TEST_TO vacío y tenant sin email (slug=${slug})`,
+      );
+      throw new BadRequestException(
+        'No hay destinatario: configurá MAIL_TEST_TO en Railway o el email del comercio en el panel de administración.',
+      );
+    }
+
+    const smtpHost = !!process.env.SMTP_HOST?.trim();
+    const mailFrom = !!process.env.MAIL_FROM?.trim();
+    const smtpUser = !!process.env.SMTP_USER?.trim();
+    const smtpPass = !!process.env.SMTP_PASS?.trim();
+    this.logger.log(
+      `[mail-test] inicio slug=${slug} plan=${tenant.plan} to=${redactEmailHint(toRaw)} smtp_host=${smtpHost} mail_from=${mailFrom} smtp_user=${smtpUser} smtp_pass=${smtpPass} port=${process.env.SMTP_PORT ?? '587'} secure=${process.env.SMTP_SECURE ?? 'false'}`,
+    );
+
+    const subject = `[VentaXLink] Prueba de correo — ${tenant.name}`;
+    const text = [
+      'Si recibís este mensaje, el envío SMTP de la plataforma (Railway) está funcionando.',
+      '',
+      `Tienda: ${tenant.name}`,
+      `Slug: ${slug}`,
+      `Hora (servidor): ${new Date().toISOString()}`,
+      '',
+      '— VentaXLink (prueba automática)',
+    ].join('\n');
+    const html = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.6;color:#111">
+<p><strong>Prueba SMTP VentaXLink</strong></p>
+<p>Si ves esto, el SMTP configurado en Railway entregó el mensaje.</p>
+<p>Tienda: <strong>${escapeHtmlStore(tenant.name)}</strong><br/>Slug: <code>${escapeHtmlStore(slug)}</code><br/>Hora UTC: ${escapeHtmlStore(new Date().toISOString())}</p>
+<p style="color:#666;font-size:14px">— VentaXLink</p>
+</body></html>`;
+
+    try {
+      const ok = await this.orderNotifications.sendPlatformEmail({
+        to: toRaw,
+        subject,
+        text,
+        html,
+      });
+      if (!ok) {
+        this.logger.error(
+          `[mail-test] sendPlatformEmail=false (falta SMTP_HOST o MAIL_FROM) slug=${slug}`,
+        );
+        throw new BadGatewayException(
+          'SMTP global incompleto: revisá en Railway SMTP_HOST, MAIL_FROM y (si aplica) SMTP_USER / SMTP_PASS.',
+        );
+      }
+    } catch (err) {
+      if (err instanceof BadGatewayException) throw err;
+      const msg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.logger.error(
+        `[mail-test] error nodemailer slug=${slug}: ${msg}`,
+        stack,
+      );
+      throw new BadGatewayException(
+        `No se pudo enviar el correo (SMTP): ${msg}. Revisá logs de la API en Railway y la contraseña de aplicación de Gmail.`,
+      );
+    }
+
+    this.logger.log(
+      `[mail-test] enviado ok slug=${slug} to=${redactEmailHint(toRaw)}`,
+    );
+    return {
+      ok: true,
+      message:
+        'Correo de prueba enviado. Revisá la bandeja de entrada y spam.',
+      to_hint: redactEmailHint(toRaw),
     };
   }
 
