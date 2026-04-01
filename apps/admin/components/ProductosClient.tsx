@@ -124,6 +124,8 @@ export function ProductosClient() {
   const [showForm, setShowForm] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
   const [plan, setPlan] = useState<string | null>(null);
+  /** Evita usar STARTER (1 sola imagen) hasta que llegue /tenant/me: el login ya guarda plan en localStorage. */
+  const effectivePlan = plan ?? tenant?.plan ?? "STARTER";
   const fileRef0 = useRef<HTMLInputElement>(null);
   const fileRef1 = useRef<HTMLInputElement>(null);
   const fileRef2 = useRef<HTMLInputElement>(null);
@@ -186,8 +188,7 @@ export function ProductosClient() {
       compareNum = c;
     }
 
-    const effectivePlan = plan ?? "STARTER";
-    const maxImg = planMaxImages(effectivePlan);
+    const maxImg = planMaxImages(plan ?? tenant?.plan ?? "STARTER");
     const urls = form.image_urls.slice(0, maxImg).map((u) => u.trim()).filter(Boolean);
     for (const u of urls) {
       if (!/^https?:\/\//i.test(u) && !u.startsWith("/")) {
@@ -291,10 +292,11 @@ export function ProductosClient() {
         </button>
       </div>
 
-      {plan != null ? (
+      {!loading ? (
         <div className="rounded-xl border border-emerald-100 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-950">
           <strong>{items.filter((p) => p.is_active).length}</strong> productos activos registrados · hasta{" "}
-          <strong>{planProductCap(plan)}</strong> disponibles en plan <strong>{planDisplayName(plan)}</strong>
+          <strong>{planProductCap(effectivePlan)}</strong> disponibles en plan{" "}
+          <strong>{planDisplayName(effectivePlan)}</strong>
         </div>
       ) : null}
 
@@ -388,11 +390,11 @@ export function ProductosClient() {
               <p className="text-sm font-medium text-[#374151]">
                 Fotos del producto
                 <span className="ml-2 font-normal text-[#6B7280]">
-                  (plan {planDisplayName(plan ?? "STARTER")}: hasta {planMaxImages(plan ?? "STARTER")}{" "}
-                  {planMaxImages(plan ?? "STARTER") === 1 ? "imagen" : "imágenes"})
+                  (plan {planDisplayName(effectivePlan)}: hasta {planMaxImages(effectivePlan)}{" "}
+                  {planMaxImages(effectivePlan) === 1 ? "imagen" : "imágenes"})
                 </span>
               </p>
-              {Array.from({ length: planMaxImages(plan ?? "STARTER") }).map((_, idx) => (
+              {Array.from({ length: planMaxImages(effectivePlan) }).map((_, idx) => (
                 <div key={idx} className="rounded-xl border border-gray-100 bg-[#FAFAFA] p-4">
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
                     Foto {idx + 1}

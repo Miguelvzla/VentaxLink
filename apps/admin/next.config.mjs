@@ -9,6 +9,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  /** Fotos de productos vienen de la API (otro dominio); sin esto Next/Image falla en prod. */
+  images: {
+    unoptimized: true,
+  },
   webpack: (config, { dev }) => {
     // En Windows + Turbo, la caché persistente de Webpack a veces deja chunks huérfanos (vendor-chunks/next.js, *.pack.gz).
     if (dev) {
