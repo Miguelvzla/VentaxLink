@@ -13,10 +13,11 @@ for (const p of [
 ]) {
   loadEnv({ path: p });
 }
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { PrismaClientExceptionFilter } from './prisma/prisma-client-exception.filter';
+import { MulterExceptionFilter } from './uploads/multer-exception.filter';
 import { resolveUploadsRoot } from './uploads/uploads-path';
 
 const uploadsRoot = resolveUploadsRoot();
@@ -139,7 +140,11 @@ async function bootstrap() {
   app.setGlobalPrefix('v1');
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(
+    new MulterExceptionFilter(),
     new PrismaClientExceptionFilter(httpAdapterHost.httpAdapter),
+  );
+  new Logger('Bootstrap').log(
+    `Uploads: UPLOADS_DIR efectivo = ${uploadsRoot} (configurá UPLOADS_DIR en Railway si hace falta)`,
   );
   app.useGlobalPipes(
     new ValidationPipe({

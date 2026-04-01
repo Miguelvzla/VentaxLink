@@ -24,6 +24,15 @@ export class PrismaClientExceptionFilter extends BaseExceptionFilter {
   }
 
   catch(exception: unknown, host: ArgumentsHost) {
+    const req = host.switchToHttp().getRequest<{ url?: string; method?: string }>();
+    const url = typeof req?.url === 'string' ? req.url : '';
+    if (url.includes('/uploads/')) {
+      const msg =
+        exception instanceof Error ? exception.message : String(exception);
+      const stack = exception instanceof Error ? exception.stack : undefined;
+      this.logger.error(`[uploads] ${req.method ?? '?'} ${url}: ${msg}`, stack);
+    }
+
     const code =
       exception &&
       typeof exception === 'object' &&

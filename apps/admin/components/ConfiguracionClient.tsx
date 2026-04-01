@@ -1,6 +1,5 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -31,15 +30,6 @@ type FormState = {
   google_maps_url: string;
   auto_whatsapp: boolean;
   notify_whatsapp_configured: boolean;
-  notify_customer_order_email: boolean;
-  smtp_host: string;
-  smtp_port: string;
-  smtp_secure: boolean;
-  smtp_user: string;
-  smtp_from_email: string;
-  smtp_from_name: string;
-  smtp_password_set: boolean;
-  smtp_configured: boolean;
   plan: string;
   billing_reminder_enabled: boolean;
   billing_reminder_day_of_month: string;
@@ -68,15 +58,6 @@ function tenantToForm(t: TenantMe): FormState {
     google_maps_url: t.google_maps_url ?? "",
     auto_whatsapp: t.auto_whatsapp ?? true,
     notify_whatsapp_configured: t.notify_whatsapp_configured ?? false,
-    notify_customer_order_email: t.notify_customer_order_email ?? false,
-    smtp_host: t.smtp_host ?? "",
-    smtp_port: t.smtp_port != null ? String(t.smtp_port) : "",
-    smtp_secure: t.smtp_secure ?? false,
-    smtp_user: t.smtp_user ?? "",
-    smtp_from_email: t.smtp_from_email ?? "",
-    smtp_from_name: t.smtp_from_name ?? "",
-    smtp_password_set: t.smtp_password_set ?? false,
-    smtp_configured: t.smtp_configured ?? false,
     plan: t.plan,
     billing_reminder_enabled: t.billing_reminder_enabled ?? false,
     billing_reminder_day_of_month:
@@ -98,8 +79,6 @@ export function ConfiguracionClient() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
-  const [newSmtpPass, setNewSmtpPass] = useState("");
-  const [showSmtpPass, setShowSmtpPass] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [bannerUploading, setBannerUploading] = useState(false);
   const logoFileRef = useRef<HTMLInputElement>(null);
@@ -146,19 +125,6 @@ export function ConfiguracionClient() {
     setError(null);
     setOk(false);
     try {
-      const ps = form.smtp_port.trim();
-      let smtpPort: number | null;
-      if (!ps) {
-        smtpPort = null;
-      } else {
-        const n = Number.parseInt(ps, 10);
-        if (!Number.isFinite(n) || n < 1 || n > 65535) {
-          setError("Puerto SMTP inválido (usá un número entre 1 y 65535 o dejalo vacío).");
-          setSaving(false);
-          return;
-        }
-        smtpPort = n;
-      }
       const body: Record<string, unknown> = {
         name: form.name.trim(),
         description: form.description.trim() || null,
@@ -175,17 +141,7 @@ export function ConfiguracionClient() {
         tiktok_url: form.tiktok_url.trim() || null,
         google_maps_url: form.google_maps_url.trim() || null,
         auto_whatsapp: form.auto_whatsapp,
-        notify_customer_order_email: form.notify_customer_order_email,
-        smtp_host: form.smtp_host.trim() || null,
-        smtp_port: smtpPort,
-        smtp_secure: form.smtp_secure,
-        smtp_user: form.smtp_user.trim() || null,
-        smtp_from_email: form.smtp_from_email.trim() || null,
-        smtp_from_name: form.smtp_from_name.trim() || null,
       };
-      if (newSmtpPass.trim()) {
-        body.smtp_pass = newSmtpPass.trim();
-      }
       if (form.plan === "PRO" || form.plan === "WHOLESALE") {
         body.billing_payment_alias = form.billing_payment_alias.trim() || null;
         const bd = form.billing_reminder_day_of_month.trim();
@@ -215,7 +171,6 @@ export function ConfiguracionClient() {
       }
       const res = await patchJson<MeResponse>("/tenant/me", token, body);
       setForm(tenantToForm(res.data));
-      setNewSmtpPass("");
       mergeStoredTenant({
         name: res.data.name,
         slug: res.data.slug,
@@ -226,20 +181,6 @@ export function ConfiguracionClient() {
       setError(err instanceof Error ? err.message : "No se pudo guardar");
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function clearSmtpCredentials() {
-    if (!token) return;
-    if (!window.confirm("¿Borrar usuario y contraseña SMTP de este comercio?")) return;
-    setError(null);
-    try {
-      await patchJson<MeResponse>("/tenant/me", token, { clear_smtp_credentials: true });
-      await load();
-      setNewSmtpPass("");
-      setOk(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo borrar SMTP");
     }
   }
 
@@ -485,115 +426,7 @@ export function ConfiguracionClient() {
             </div>
           </section>
 
-          <section className="border-t border-gray-100 pt-6">
-            <h2 className="font-semibold text-[#111827]">Correo (SMTP) de tu comercio</h2>
-            <p className="mt-2 text-sm text-[#6B7280]">
-              Si completás estos datos, los avisos de pedido nuevo (al comercio y, si lo activás, al cliente) se envían
-              desde tu casilla. Si no, puede usarse el SMTP global del servidor (si está configurado).
-            </p>
-            <p className="mt-2 text-xs text-[#9CA3AF]">
-              Estado SMTP:{" "}
-              <strong>{form.smtp_configured ? "listo para enviar" : "incompleto"}</strong>
-              {form.smtp_password_set ? " · contraseña guardada" : ""}
-            </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#374151]">Servidor (host)</label>
-                <input
-                  value={form.smtp_host}
-                  onChange={(e) => setForm((f) => (f ? { ...f, smtp_host: e.target.value } : f))}
-                  placeholder="smtp.tuproveedor.com"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#374151]">Puerto</label>
-                <input
-                  value={form.smtp_port}
-                  onChange={(e) => setForm((f) => (f ? { ...f, smtp_port: e.target.value } : f))}
-                  placeholder="587"
-                  inputMode="numeric"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="flex items-center gap-2 text-sm text-[#374151]">
-                  <input
-                    type="checkbox"
-                    checked={form.smtp_secure}
-                    onChange={(e) => setForm((f) => (f ? { ...f, smtp_secure: e.target.checked } : f))}
-                  />
-                  Conexión segura (TLS directo, p. ej. puerto 465)
-                </label>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#374151]">Usuario SMTP</label>
-                <input
-                  value={form.smtp_user}
-                  onChange={(e) => setForm((f) => (f ? { ...f, smtp_user: e.target.value } : f))}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#374151]">Nueva contraseña SMTP</label>
-                <div className="relative">
-                  <input
-                    type={showSmtpPass ? "text" : "password"}
-                    autoComplete="new-password"
-                    value={newSmtpPass}
-                    onChange={(e) => setNewSmtpPass(e.target.value)}
-                    placeholder={form.smtp_password_set ? "Dejar vacío para no cambiar" : "Obligatorio si hay usuario"}
-                    className="w-full rounded-xl border border-gray-200 py-2.5 pl-4 pr-12 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowSmtpPass((v) => !v)}
-                    className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-[#6B7280] hover:bg-gray-100 hover:text-[#111827]"
-                    aria-label={showSmtpPass ? "Ocultar contraseña SMTP" : "Mostrar contraseña SMTP"}
-                  >
-                    {showSmtpPass ? <EyeOff className="h-5 w-5" aria-hidden /> : <Eye className="h-5 w-5" aria-hidden />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#374151]">Remitente (e-mail)</label>
-                <input
-                  type="email"
-                  value={form.smtp_from_email}
-                  onChange={(e) => setForm((f) => (f ? { ...f, smtp_from_email: e.target.value } : f))}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-[#374151]">Nombre del remitente (opcional)</label>
-                <input
-                  value={form.smtp_from_name}
-                  onChange={(e) => setForm((f) => (f ? { ...f, smtp_from_name: e.target.value } : f))}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
-                />
-              </div>
-            </div>
-            <label className="mt-4 flex items-center gap-2 text-sm text-[#374151]">
-              <input
-                type="checkbox"
-                checked={form.notify_customer_order_email}
-                onChange={(e) =>
-                  setForm((f) => (f ? { ...f, notify_customer_order_email: e.target.checked } : f))
-                }
-              />
-              Enviar al cliente un e-mail con el número de pedido y enlace (requiere e-mail en el checkout y SMTP
-              configurado)
-            </label>
-            {form.smtp_password_set || form.smtp_user ? (
-              <button
-                type="button"
-                onClick={() => void clearSmtpCredentials()}
-                className="mt-3 text-sm font-medium text-red-600 hover:underline"
-              >
-                Borrar usuario y contraseña SMTP
-              </button>
-            ) : null}
-          </section>
+          {/* SMTP del comercio: oculto por requerimiento de producto. */}
 
           {/* Se oculta sección de recordatorio mensual por requerimiento de producto. */}
 

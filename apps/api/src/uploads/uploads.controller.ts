@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Logger,
   Post,
   Req,
   UploadedFile,
@@ -16,6 +17,7 @@ import { JwtAuthGuard, JwtUserPayload } from '../auth/jwt-auth.guard';
 import { resolveUploadsRoot } from './uploads-path';
 
 const uploadsRoot = resolveUploadsRoot();
+const uploadLog = new Logger('UploadsController');
 
 function buildPublicFileUrl(
   req: { protocol: string; get: (h: string) => string | undefined },
@@ -39,6 +41,10 @@ function safeTenantUploadDir(req: unknown) {
     return tenantUploadDir(req);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    uploadLog.error(
+      `mkdir/tenant dir falló bajo ${uploadsRoot}: ${msg}`,
+      err instanceof Error ? err.stack : undefined,
+    );
     throw new BadRequestException(
       `No se pudo guardar el archivo en el servidor (${msg}). Revisá UPLOADS_DIR y permisos de escritura.`,
     );

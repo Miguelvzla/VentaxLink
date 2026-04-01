@@ -178,9 +178,11 @@ function onPlatformUnauthorized() {
 
 export function apiErrorMessage(body: unknown, fallback: string): string {
   if (body && typeof body === "object") {
-    const m = (body as { message?: unknown }).message;
+    const o = body as { message?: unknown; error?: unknown };
+    const m = o.message;
     if (typeof m === "string") return m;
     if (Array.isArray(m)) return m.join(". ");
+    if (typeof o.error === "string" && o.error.length) return o.error;
   }
   return fallback;
 }
@@ -295,7 +297,7 @@ export async function postUploadProductImage(token: string, file: File): Promise
   });
   const fallback =
     r.status >= 500
-      ? "Error al subir imagen. En la API revisá UPLOADS_DIR/permisos de escritura y tamaño máximo (5MB)."
+      ? "Error al subir imagen (500). En Railway: revisá logs de la API, variable UPLOADS_DIR y GET /v1/health (uploads_writable)."
       : `Error ${r.status}`;
   return readJsonResponse<{ url: string }>(r, fallback, onUnauthorized);
 }
@@ -310,7 +312,7 @@ export async function postUploadTenantLogo(token: string, file: File): Promise<{
   });
   const fallback =
     r.status >= 500
-      ? "Error al subir logo. En la API revisá UPLOADS_DIR/permisos de escritura y tamaño máximo (5MB)."
+      ? "Error al subir logo (500). En Railway: revisá logs de la API, UPLOADS_DIR y GET /v1/health (uploads_writable)."
       : `Error ${r.status}`;
   return readJsonResponse<{ url: string }>(r, fallback, onUnauthorized);
 }
@@ -325,7 +327,7 @@ export async function postUploadTenantBanner(token: string, file: File): Promise
   });
   const fallback =
     r.status >= 500
-      ? "Error al subir banner. En la API revisá UPLOADS_DIR/permisos de escritura y tamaño máximo (5MB)."
+      ? "Error al subir banner (500). En Railway: revisá logs de la API, UPLOADS_DIR y GET /v1/health (uploads_writable)."
       : `Error ${r.status}`;
   return readJsonResponse<{ url: string }>(r, fallback, onUnauthorized);
 }
