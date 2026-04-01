@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductAddToCart } from "@/components/ProductAddToCart";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
+import { ProductShareButton } from "@/components/ProductShareButton";
 import { ProductViewTracker } from "@/components/ProductViewTracker";
 import { estimateProductPoints, fetchProduct, fetchTenant } from "@/lib/api";
 
@@ -33,12 +34,15 @@ export default async function ProductoDetallePage({
   return (
     <div>
       <ProductViewTracker slug={slug} productSlug={p.slug} enabled={trackProductViews} />
-      <Link
-        href={`/tienda/${slug}/productos`}
-        className="text-sm font-medium text-[#6B7280] hover:text-[#111827]"
-      >
-        ← Volver al catálogo
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href={`/tienda/${slug}/productos`}
+          className="text-sm font-medium text-[#6B7280] hover:text-[#111827]"
+        >
+          ← Volver al catálogo
+        </Link>
+        <ProductShareButton slug={slug} productSlug={p.slug} productName={p.name} />
+      </div>
 
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
         <div className="space-y-3">

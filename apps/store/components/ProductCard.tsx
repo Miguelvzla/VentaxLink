@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { ProductCardCarousel } from "@/components/ProductCardCarousel";
 import type { ProductListItem } from "@/lib/api";
 
 type Props = {
@@ -12,33 +13,28 @@ type Props = {
 };
 
 export function ProductCard({ product, slug, primaryColor, pointsEarned }: Props) {
-  const img = product.images[0]?.url;
   const price = formatArs(product.price);
   const old = product.compare_price ? formatArs(product.compare_price) : null;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
+      <div className="relative aspect-square bg-[#F3F4F6]">
+        <ProductCardCarousel images={product.images} name={product.name} />
+        {product.is_new ? (
+          <span className="absolute left-2 top-2 rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-medium text-white">
+            Nuevo
+          </span>
+        ) : null}
+        {product.is_featured ? (
+          <span
+            className="absolute right-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium text-white"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Destacado
+          </span>
+        ) : null}
+      </div>
       <Link href={`/tienda/${slug}/productos/${product.slug}`} className="block">
-        <div className="relative aspect-square bg-[#F3F4F6]">
-          {img ? (
-            <Image src={img} alt={product.images[0]?.alt || product.name} fill className="object-cover" />
-          ) : (
-            <div className="flex h-full items-center justify-center text-4xl text-gray-300">📦</div>
-          )}
-          {product.is_new ? (
-            <span className="absolute left-2 top-2 rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-medium text-white">
-              Nuevo
-            </span>
-          ) : null}
-          {product.is_featured ? (
-            <span
-              className="absolute right-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium text-white"
-              style={{ backgroundColor: primaryColor }}
-            >
-              Destacado
-            </span>
-          ) : null}
-        </div>
         <div className="p-4">
           <h2 className="font-medium text-[#111827] line-clamp-2">{product.name}</h2>
           {product.short_desc ? <p className="mt-1 line-clamp-2 text-xs text-[#9CA3AF]">{product.short_desc}</p> : null}

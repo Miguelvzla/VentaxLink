@@ -293,7 +293,11 @@ export async function postUploadProductImage(token: string, file: File): Promise
     headers: { Authorization: `Bearer ${token}` },
     body: fd,
   });
-  return readJsonResponse<{ url: string }>(r, `Error ${r.status}`, onUnauthorized);
+  const fallback =
+    r.status >= 500
+      ? "Error al subir imagen. En la API revisá UPLOADS_DIR/permisos de escritura y tamaño máximo (5MB)."
+      : `Error ${r.status}`;
+  return readJsonResponse<{ url: string }>(r, fallback, onUnauthorized);
 }
 
 export async function postUploadTenantLogo(token: string, file: File): Promise<{ url: string }> {
@@ -304,7 +308,11 @@ export async function postUploadTenantLogo(token: string, file: File): Promise<{
     headers: { Authorization: `Bearer ${token}` },
     body: fd,
   });
-  return readJsonResponse<{ url: string }>(r, `Error ${r.status}`, onUnauthorized);
+  const fallback =
+    r.status >= 500
+      ? "Error al subir logo. En la API revisá UPLOADS_DIR/permisos de escritura y tamaño máximo (5MB)."
+      : `Error ${r.status}`;
+  return readJsonResponse<{ url: string }>(r, fallback, onUnauthorized);
 }
 
 export async function postUploadTenantBanner(token: string, file: File): Promise<{ url: string }> {
@@ -315,5 +323,9 @@ export async function postUploadTenantBanner(token: string, file: File): Promise
     headers: { Authorization: `Bearer ${token}` },
     body: fd,
   });
-  return readJsonResponse<{ url: string }>(r, `Error ${r.status}`, onUnauthorized);
+  const fallback =
+    r.status >= 500
+      ? "Error al subir banner. En la API revisá UPLOADS_DIR/permisos de escritura y tamaño máximo (5MB)."
+      : `Error ${r.status}`;
+  return readJsonResponse<{ url: string }>(r, fallback, onUnauthorized);
 }

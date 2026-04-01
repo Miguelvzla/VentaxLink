@@ -34,6 +34,17 @@ function tenantUploadDir(req: unknown) {
   return dir;
 }
 
+function safeTenantUploadDir(req: unknown) {
+  try {
+    return tenantUploadDir(req);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new BadRequestException(
+      `No se pudo guardar el archivo en el servidor (${msg}). Revisá UPLOADS_DIR y permisos de escritura.`,
+    );
+  }
+}
+
 const imageFileFilter = (
   _req: unknown,
   file: Express.Multer.File,
@@ -54,7 +65,11 @@ export class UploadsController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination(req, _file, cb) {
-          cb(null, tenantUploadDir(req));
+          try {
+            cb(null, safeTenantUploadDir(req));
+          } catch (e) {
+            cb(e as Error, '');
+          }
         },
         filename(_req, file, cb) {
           const ext = extname(file.originalname).toLowerCase();
@@ -82,7 +97,11 @@ export class UploadsController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination(req, _file, cb) {
-          cb(null, tenantUploadDir(req));
+          try {
+            cb(null, safeTenantUploadDir(req));
+          } catch (e) {
+            cb(e as Error, '');
+          }
         },
         filename(_req, file, cb) {
           const ext = extname(file.originalname).toLowerCase();
@@ -110,7 +129,11 @@ export class UploadsController {
     FileInterceptor('file', {
       storage: diskStorage({
         destination(req, _file, cb) {
-          cb(null, tenantUploadDir(req));
+          try {
+            cb(null, safeTenantUploadDir(req));
+          } catch (e) {
+            cb(e as Error, '');
+          }
         },
         filename(_req, file, cb) {
           const ext = extname(file.originalname).toLowerCase();
