@@ -16,7 +16,8 @@ export function ProMailTestButton({ slug, primaryColor, plan, mailTestAvailable 
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isPro) return null;
+  /* Solo visible con ENABLE_STORE_SMTP_TEST en la API: evita texto técnico y botón gris en la tienda pública. */
+  if (!isPro || mailTestAvailable !== true) return null;
 
   async function onSend() {
     setLoading(true);
@@ -34,20 +35,14 @@ export function ProMailTestButton({ slug, primaryColor, plan, mailTestAvailable 
 
   return (
     <section className="rounded-2xl border border-dashed border-gray-200 bg-[#FAFAFA]/90 p-4 sm:p-5">
-      <h3 className="text-sm font-semibold text-[#111827]">Prueba de correo (Pro)</h3>
+      <h3 className="text-sm font-semibold text-[#111827]">Prueba de correo</h3>
       <p className="mt-1 text-xs text-[#6B7280]">
-        Envía un mail de prueba usando el SMTP de la plataforma (Railway). Si falla, revisá los logs de la API
-        (buscá <code className="rounded bg-gray-100 px-1">[mail-test]</code>).
+        Envía un correo de prueba desde el servidor. Si no llega, revisá los logs de la API (filtrá por{" "}
+        <code className="rounded bg-gray-100 px-1">mail-test</code>).
       </p>
-      {!mailTestAvailable ? (
-        <p className="mt-3 text-xs text-amber-800">
-          La prueba no está habilitada en el servidor: en Railway configurá{" "}
-          <code className="rounded bg-amber-50 px-1">ENABLE_STORE_SMTP_TEST=true</code> en el servicio de la API.
-        </p>
-      ) : null}
       <button
         type="button"
-        disabled={loading || !mailTestAvailable}
+        disabled={loading}
         onClick={onSend}
         className="mt-3 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
         style={{ backgroundColor: primaryColor }}

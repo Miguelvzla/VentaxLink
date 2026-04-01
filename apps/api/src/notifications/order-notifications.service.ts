@@ -118,7 +118,37 @@ export class OrderNotificationsService {
     return this.isGlobalSmtpConfigured() && !!inbox;
   }
 
+  /**
+   * Por defecto por debajo del timeout típico del proxy (~30s en Railway): si SMTP cuelga,
+   * Nodemailer corta antes y Nest puede devolver 502 JSON con CORS; si no, el edge devuelve
+   * 502 vacío y el navegador muestra "CORS".
+   */
+  private smtpSocketTimeouts(): {
+    connectionTimeout: number;
+    greetingTimeout: number;
+    socketTimeout: number;
+  } {
+    return {
+      connectionTimeout: Number(
+        process.env.SMTP_CONNECTION_TIMEOUT_MS || 12_000,
+      ),
+      greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 12_000),
+      socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 22_000),
+    };
+  }
+
+  /** Forzar IPv4 (4) o IPv6 (6); en algunos hosts hacia Gmail evita Connection timeout por ruta IPv6. */
+  private smtpSocketFamily(): 4 | 6 | undefined {
+    const v = (process.env.SMTP_IP_FAMILY ?? '').trim().toLowerCase();
+    if (v === '4' || v === 'ipv4') return 4;
+    if (v === '6' || v === 'ipv6') return 6;
+    return undefined;
+  }
+
   private createTransporter(tenantSmtp: TenantSmtpForMail | null) {
+    const t = this.smtpSocketTimeouts();
+    const family = this.smtpSocketFamily();
+    const familyOpt = family !== undefined ? { family } : {};
     if (tenantSmtp) {
       return nodemailer.createTransport({
         host: tenantSmtp.host,
@@ -128,6 +158,8 @@ export class OrderNotificationsService {
           tenantSmtp.user && tenantSmtp.pass
             ? { user: tenantSmtp.user, pass: tenantSmtp.pass }
             : undefined,
+        ...t,
+        ...familyOpt,
       });
     }
     if (!this.isGlobalSmtpConfigured()) return null;
@@ -142,6 +174,8 @@ export class OrderNotificationsService {
         process.env.SMTP_USER && process.env.SMTP_PASS
           ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
           : undefined,
+      ...t,
+      ...familyOpt,
     });
   }
 

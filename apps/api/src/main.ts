@@ -135,10 +135,15 @@ async function bootstrap() {
   const contactTimeoutMs = Number(
     process.env.CONTACT_REQUEST_TIMEOUT_MS || 45_000,
   );
+  /** Menor que el proxy típico (p. ej. Railway ~30s) para cerrar el socket desde Node con respuesta. */
+  const mailTestTimeoutMs = Number(
+    process.env.MAIL_TEST_REQUEST_TIMEOUT_MS || 28_000,
+  );
   app.use((req, res, next) => {
     const path = req.path || '';
-    const ms =
-      path.includes('/public/contact') || path.includes('/mail-test')
+    const ms = path.includes('/mail-test')
+      ? mailTestTimeoutMs
+      : path.includes('/public/contact')
         ? contactTimeoutMs
         : requestTimeoutMs;
     req.setTimeout(ms);
