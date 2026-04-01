@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -28,6 +29,11 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    if (dto.accepts_terms !== true) {
+      throw new BadRequestException(
+        'Debés aceptar términos y condiciones para registrarte',
+      );
+    }
     const storeName = dto.storeName.trim();
     const slug = dto.slug.trim().toLowerCase();
     const email = dto.email.trim().toLowerCase();

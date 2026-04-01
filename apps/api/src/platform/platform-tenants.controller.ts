@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Patch,
   Query,
@@ -19,6 +20,17 @@ export class PlatformTenantsController {
   @Get()
   list(@Query('q') q?: string) {
     return this.tenants.list(q);
+  }
+
+  @Get('settings/marketplace-terms')
+  getMarketplaceTerms() {
+    return this.tenants.getMarketplaceTerms();
+  }
+
+  @Patch('settings/marketplace-terms')
+  @HttpCode(200)
+  patchMarketplaceTerms(@Body() dto: { terms?: string }) {
+    return this.tenants.patchMarketplaceTerms(dto.terms ?? '');
   }
 
   @Patch(':id')

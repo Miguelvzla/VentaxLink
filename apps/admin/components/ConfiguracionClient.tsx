@@ -187,6 +187,7 @@ export function ConfiguracionClient() {
         body.smtp_pass = newSmtpPass.trim();
       }
       if (form.plan === "PRO" || form.plan === "WHOLESALE") {
+        body.billing_payment_alias = form.billing_payment_alias.trim() || null;
         const bd = form.billing_reminder_day_of_month.trim();
         const bh = form.billing_reminder_hour.trim();
         if (form.billing_reminder_enabled) {
@@ -458,6 +459,21 @@ export function ConfiguracionClient() {
                   className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
                 />
               </div>
+              {form.plan === "PRO" || form.plan === "WHOLESALE" ? (
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm font-medium text-[#374151]">
+                    Alias para transferencias (visible al confirmar pedido)
+                  </label>
+                  <input
+                    value={form.billing_payment_alias}
+                    onChange={(e) =>
+                      setForm((f) => (f ? { ...f, billing_payment_alias: e.target.value } : f))
+                    }
+                    placeholder="ej. mi-negocio.mp"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
+                  />
+                </div>
+              ) : null}
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-[#374151]">Dirección</label>
                 <input

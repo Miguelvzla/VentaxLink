@@ -120,6 +120,13 @@ model PlatformAdmin {
   @@index([email])
 }
 
+model PlatformSetting {
+  key        String   @id
+  value      String   @db.Text
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
 model Category {
   id          String     @id @default(cuid())
   tenant_id   String

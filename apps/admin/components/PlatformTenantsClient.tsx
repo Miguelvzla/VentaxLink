@@ -126,6 +126,7 @@ export function PlatformTenantsClient() {
   const [brSubject, setBrSubject] = useState("");
   const [brBody, setBrBody] = useState("");
   const [brAlias, setBrAlias] = useState("");
+  const [termsText, setTermsText] = useState("");
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput.trim()), 400);
@@ -167,6 +168,16 @@ export function PlatformTenantsClient() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!token) return;
+    void getJsonPlatform<{ data: { terms: string } }>(
+      "/platform/tenants/settings/marketplace-terms",
+      token,
+    )
+      .then((res) => setTermsText(res.data.terms ?? ""))
+      .catch(() => undefined);
+  }, [token]);
 
   const filtered = useMemo(() => {
     if (tab === "ALL") return rows;
@@ -296,6 +307,18 @@ export function PlatformTenantsClient() {
     );
   }
 
+  async function saveMarketplaceTerms() {
+    if (!token) return;
+    setError(null);
+    try {
+      await patchJsonPlatform("/platform/tenants/settings/marketplace-terms", token, {
+        terms: termsText,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar términos");
+    }
+  }
+
   if (!token) {
     return null;
   }
@@ -356,6 +379,28 @@ export function PlatformTenantsClient() {
           </p>
         ) : null}
       </div>
+
+      <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+        <h2 className="text-sm font-semibold text-white">Términos marketplace (registro y checkout)</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Este texto lo aceptan comercios al registrarse y clientes al confirmar pedidos.
+        </p>
+        <textarea
+          rows={4}
+          value={termsText}
+          onChange={(e) => setTermsText(e.target.value)}
+          className="mt-3 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none ring-emerald-500 focus:ring-2"
+        />
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={() => void saveMarketplaceTerms()}
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+          >
+            Guardar términos
+          </button>
+        </div>
+      </section>
 
       <div className="mt-6 flex flex-wrap gap-2">
         {tabs.map((t) => (

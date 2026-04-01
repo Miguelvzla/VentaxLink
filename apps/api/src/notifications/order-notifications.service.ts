@@ -203,48 +203,59 @@ export class OrderNotificationsService {
   }
 
   private async sendCustomerEmailIfNeeded(p: OrderNotifyPayload): Promise<void> {
-    if (!p.notifyCustomerOrderEmail || !p.customerEmail?.trim()) {
-      this.logger.debug('Aviso por mail al cliente desactivado o sin email');
+    if (!p.customerEmail?.trim()) {
+      this.logger.debug('Sin email de cliente: se omite confirmación por correo');
       return;
     }
-    if (!p.tenantSmtp) {
-      this.logger.debug(
-        'El comercio no tiene SMTP propio configurado: no se envía mail al cliente (configurá SMTP en el panel)',
-      );
-      return;
-    }
-    const transporter = this.createTransporter(p.tenantSmtp);
-    if (!transporter) return;
-    const from = this.mailFrom(p.tenantSmtp);
-    const subject = `Pedido #${p.orderNumber} — ${p.tenantName}`;
+    const subject = `Pedido a ${p.tenantName} #${p.orderNumber}`;
+    const lines = p.lines
+      .map((l) => `- ${l.productName} x${l.quantity} -> $${l.subtotal}`)
+      .join('\n');
     const text = [
       `Hola ${p.customerName},`,
       ``,
       `Recibimos tu pedido #${p.orderNumber} en ${p.tenantName}.`,
+      ``,
+      `Detalle:`,
+      lines,
       `Total: $${p.total}`,
       ``,
-      `Podés ver la tienda y tus datos de contacto acá:`,
+      `Tienda: ${p.tenantName}`,
       p.trackUrl,
       ``,
-      `El comercio se va a comunicar con vos para coordinar pago y entrega.`,
+      `Este correo fue enviado por VentaXLink como proveedor de la plataforma.`,
+      `La compra fue realizada al comercio ${p.tenantName}, responsable de la venta y entrega.`,
     ].join('\n');
+    const rows = p.lines
+      .map(
+        (l) =>
+          `<tr><td style="padding:6px 0">${escapeHtml(l.productName)}</td><td style="padding:6px 0;text-align:center">${l.quantity}</td><td style="padding:6px 0;text-align:right">$${escapeHtml(l.subtotal)}</td></tr>`,
+      )
+      .join('');
     const html = `<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;line-height:1.5;color:#111">
 <p>Hola ${escapeHtml(p.customerName)},</p>
 <p>Recibimos tu <strong>pedido #${p.orderNumber}</strong> en <strong>${escapeHtml(p.tenantName)}</strong>.</p>
+<table style="width:100%;max-width:520px;border-collapse:collapse;margin:12px 0">
+<thead><tr style="border-bottom:1px solid #ddd"><th style="text-align:left;padding:6px 0">Producto</th><th style="padding:6px 0">Cant.</th><th style="text-align:right;padding:6px 0">Subtotal</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
 <p style="font-size:18px"><strong>Total: $${escapeHtml(p.total)}</strong></p>
 <p><a href="${escapeHtml(p.trackUrl)}">Ir a la tienda</a></p>
-<p style="color:#666;font-size:14px">El comercio te contactará para coordinar pago y entrega.</p>
+<p style="color:#666;font-size:14px">Este correo fue enviado por VentaXLink como proveedor del servicio. La compra fue realizada al comercio <strong>${escapeHtml(p.tenantName)}</strong>, responsable de la venta, pago y entrega.</p>
 </body></html>`;
-    await transporter.sendMail({
-      from,
+    const ok = await this.sendPlatformEmail({
       to: p.customerEmail.trim(),
       subject,
       text,
       html,
     });
-    this.logger.log(
-      `Email de confirmación pedido #${p.orderNumber} enviado al cliente ${p.customerEmail}`,
-    );
+    if (!ok) {
+      this.logger.warn(
+        `No se pudo enviar confirmación al cliente ${p.customerEmail}: SMTP global no configurado`,
+      );
+      return;
+    }
+    this.logger.log(`Confirmación de pedido enviada al cliente ${p.customerEmail}`);
   }
 
   private buildPlainText(p: OrderNotifyPayload): string {

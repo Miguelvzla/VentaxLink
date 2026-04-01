@@ -51,6 +51,21 @@ export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps
   const [plan, setPlan] = useState<PlanChoice>(initialPlan ?? "STARTER");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [marketplaceTerms, setMarketplaceTerms] = useState(
+    "VentaXLink provee la plataforma tecnológica para publicar tiendas online. La compra se realiza directamente al comercio vendedor.",
+  );
+  const [acceptsTerms, setAcceptsTerms] = useState(false);
+
+  useEffect(() => {
+    const base = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1").replace(/\/+$/, "");
+    void fetch(`${base}/public/legal`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { data?: { marketplace_terms?: string } } | null) => {
+        const t = j?.data?.marketplace_terms?.trim();
+        if (t) setMarketplaceTerms(t);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const previewUrl = useMemo(() => {
     const s = slug.trim().toLowerCase() || "tu-link";
@@ -70,6 +85,10 @@ export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps
       setError("Las contraseñas no coinciden.");
       return;
     }
+    if (!acceptsTerms) {
+      setError("Debés aceptar términos y condiciones para crear tu tienda.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await postJson<AuthResponse>("/auth/register", {
@@ -79,6 +98,7 @@ export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps
         phone,
         password,
         plan,
+        accepts_terms: true,
         ...(ownerName.trim() ? { ownerName: ownerName.trim() } : {}),
       });
       saveSession(res);
@@ -285,6 +305,16 @@ export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps
       >
         {loading ? "Creando…" : "Crear mi tienda"}
       </button>
+      <label className="flex items-start gap-2 rounded-xl border border-gray-200 bg-[#F9FAFB] px-3 py-3 text-xs text-[#4B5563]">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={acceptsTerms}
+          onChange={(e) => setAcceptsTerms(e.target.checked)}
+        />
+        <span>Acepto términos y condiciones de uso de la plataforma.</span>
+      </label>
+      <p className="text-[11px] text-[#6B7280]">{marketplaceTerms}</p>
       <p className="text-center text-sm text-[#6B7280]">
         ¿Ya tenés cuenta?{" "}
         <Link href="/login" className="font-semibold text-[#2563EB] hover:underline">

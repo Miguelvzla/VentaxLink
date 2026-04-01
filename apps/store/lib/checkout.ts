@@ -9,6 +9,7 @@ export type CheckoutPayload = {
   customer_notes?: string;
   coupon_code?: string;
   use_points_redeem?: boolean;
+  accepts_marketplace_terms: boolean;
 };
 
 function parseError(json: unknown, status: number): string {
@@ -41,6 +42,7 @@ export async function postCheckout(slug: string, payload: CheckoutPayload) {
       subtotal: string;
       discount_amount: string;
       total: string;
+      billing_payment_alias?: string | null;
       message: string;
     };
   };

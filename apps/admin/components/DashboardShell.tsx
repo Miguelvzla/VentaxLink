@@ -14,6 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { getStoredTenant } from "@/lib/auth";
 import { LogoutLink } from "@/components/LogoutLink";
 
@@ -71,6 +72,7 @@ const upgradePanelHref = "/dashboard/plan";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [plan, setPlan] = useState<string | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     const sync = () => setPlan(getStoredTenant()?.plan ?? "STARTER");
@@ -150,12 +152,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               Subir plan
             </Link>
           </div>
-          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Menú móvil del panel">
+          <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Menú móvil del panel">
             {visibleNav.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-[#374151]"
+                className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                  pathname === href
+                    ? "border-[#2563EB] bg-[#EFF6FF] text-[#1D4ED8]"
+                    : "border-gray-200 bg-white text-[#374151] hover:bg-gray-50"
+                }`}
               >
                 <Icon className="h-3.5 w-3.5" aria-hidden />
                 {label}

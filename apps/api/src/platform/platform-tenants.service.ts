@@ -7,9 +7,44 @@ import { PlanType, Prisma, TenantStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { PlatformPatchTenantDto } from './dto/platform-patch-tenant.dto';
 
+const MARKETPLACE_TERMS_KEY = 'marketplace_terms';
+const DEFAULT_MARKETPLACE_TERMS =
+  'VentaXLink provee la plataforma tecnológica para publicar tiendas online. La compra se realiza directamente al comercio vendedor, que es responsable por precios, stock, entrega, facturación y postventa.';
+
 @Injectable()
 export class PlatformTenantsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async getMarketplaceTerms() {
+    const row = await this.prisma.platformSetting.findUnique({
+      where: { key: MARKETPLACE_TERMS_KEY },
+      select: { value: true, updated_at: true },
+    });
+    return {
+      data: {
+        terms: row?.value?.trim() || DEFAULT_MARKETPLACE_TERMS,
+        updated_at: row?.updated_at?.toISOString() ?? null,
+      },
+    };
+  }
+
+  async patchMarketplaceTerms(terms: string) {
+    const normalized = terms.trim();
+    if (normalized.length < 40) {
+      throw new BadRequestException(
+        'Los términos deben tener al menos 40 caracteres',
+      );
+    }
+    const row = await this.prisma.platformSetting.upsert({
+      where: { key: MARKETPLACE_TERMS_KEY },
+      create: { key: MARKETPLACE_TERMS_KEY, value: normalized },
+      update: { value: normalized },
+      select: { value: true, updated_at: true },
+    });
+    return {
+      data: { terms: row.value, updated_at: row.updated_at.toISOString() },
+    };
+  }
 
   async patch(id: string, dto: PlatformPatchTenantDto) {
     const t = await this.prisma.tenant.findUnique({

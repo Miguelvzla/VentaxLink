@@ -66,4 +66,7 @@ export class CheckoutDto {
   @IsOptional()
   @IsBoolean()
   use_points_redeem?: boolean;
+
+  @IsBoolean({ message: 'Debés aceptar los términos de compra' })
+  accepts_marketplace_terms!: boolean;
 }

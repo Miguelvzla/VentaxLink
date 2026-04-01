@@ -45,6 +45,7 @@ export type PublicTenant = {
   catalog_visible_cap?: number | null;
   catalog_total_products?: number | null;
   billing_hold_message?: string | null;
+  billing_payment_alias?: string | null;
 };
 
 /** Puntos que equivalen al precio del producto (piso), si el programa está activo. */

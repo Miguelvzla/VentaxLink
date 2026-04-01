@@ -1,5 +1,4 @@
 import { config as loadEnv } from 'dotenv';
-import { existsSync, mkdirSync } from 'fs';
 import { resolve } from 'path';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -18,11 +17,9 @@ import { ValidationPipe } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { PrismaClientExceptionFilter } from './prisma/prisma-client-exception.filter';
+import { resolveUploadsRoot } from './uploads/uploads-path';
 
-const uploadsRoot = resolve(process.cwd(), 'uploads');
-if (!existsSync(uploadsRoot)) {
-  mkdirSync(uploadsRoot, { recursive: true });
-}
+const uploadsRoot = resolveUploadsRoot();
 
 const skipOptions = (req: express.Request) => req.method === 'OPTIONS';
 

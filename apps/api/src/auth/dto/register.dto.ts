@@ -2,6 +2,7 @@ import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsIn,
+  IsBoolean,
   IsOptional,
   IsString,
   Matches,
@@ -51,4 +52,7 @@ export class RegisterDto {
     message: 'Plan no válido',
   })
   plan?: 'STARTER' | 'PRO' | 'WHOLESALE';
+
+  @IsBoolean({ message: 'Debés aceptar términos y condiciones' })
+  accepts_terms!: boolean;
 }

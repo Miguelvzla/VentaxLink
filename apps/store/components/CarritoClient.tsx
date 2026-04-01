@@ -35,12 +35,17 @@ export function CarritoClient({ slug, tenant }: Props) {
   const [deliveryType, setDeliveryType] = useState<"PICKUP" | "DELIVERY">("PICKUP");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [marketplaceTerms, setMarketplaceTerms] = useState(
+    "VentaXLink provee la plataforma tecnológica. La compra se realiza directamente al comercio vendedor.",
+  );
+  const [acceptsTerms, setAcceptsTerms] = useState(false);
   const [done, setDone] = useState<{
     order_number: number;
     message: string;
     subtotal: string;
     discount_amount: string;
     total: string;
+    billing_payment_alias?: string | null;
   } | null>(null);
 
   const canUseCoupon = tenant.plan === "PRO" || tenant.plan === "WHOLESALE";
@@ -61,6 +66,17 @@ export function CarritoClient({ slug, tenant }: Props) {
     return () => window.removeEventListener("ventaxlink-cart", onUpdate);
   }, [slug]);
 
+  useEffect(() => {
+    const base = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1").replace(/\/+$/, "");
+    void fetch(`${base}/public/legal`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { data?: { marketplace_terms?: string } } | null) => {
+        const t = j?.data?.marketplace_terms?.trim();
+        if (t) setMarketplaceTerms(t);
+      })
+      .catch(() => undefined);
+  }, []);
+
   const total = lines.reduce((s, l) => s + lineSubtotal(l), 0);
 
   async function onSubmit(e: React.FormEvent) {
@@ -80,6 +96,10 @@ export function CarritoClient({ slug, tenant }: Props) {
       setError("Indicá un teléfono válido (mínimo 6 dígitos).");
       return;
     }
+    if (!acceptsTerms) {
+      setError("Debés aceptar los términos de compra para continuar.");
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await postCheckout(slug, {
@@ -91,6 +111,7 @@ export function CarritoClient({ slug, tenant }: Props) {
         customer_notes: notes.trim() || undefined,
         coupon_code: canUseCoupon && couponCode.trim() ? couponCode.trim() : undefined,
         use_points_redeem: canRedeemPoints && usePointsRedeem ? true : undefined,
+        accepts_marketplace_terms: true,
       });
       setDone({
         order_number: res.data.order_number,
@@ -98,6 +119,7 @@ export function CarritoClient({ slug, tenant }: Props) {
         subtotal: res.data.subtotal,
         discount_amount: res.data.discount_amount,
         total: res.data.total,
+        billing_payment_alias: res.data.billing_payment_alias ?? null,
       });
       setCart(slug, []);
       setLines([]);
@@ -131,6 +153,18 @@ export function CarritoClient({ slug, tenant }: Props) {
             <span>{formatArs(done.total)}</span>
           </div>
         </div>
+        {done.billing_payment_alias ? (
+          <div className="mx-auto mt-4 max-w-xs rounded-xl border border-emerald-200 bg-white px-4 py-3 text-left text-sm text-[#374151]">
+            <p className="text-xs text-[#6B7280]">Podés transferir a este alias:</p>
+            <button
+              type="button"
+              onClick={() => void navigator.clipboard?.writeText(done.billing_payment_alias || "")}
+              className="mt-1 w-full rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 font-mono text-xs text-emerald-900 hover:bg-emerald-100"
+            >
+              {done.billing_payment_alias}
+            </button>
+          </div>
+        ) : null}
         <Link
           href={`/tienda/${slug}`}
           className="mt-6 inline-block rounded-xl px-5 py-2.5 text-sm font-semibold text-white"
@@ -237,9 +271,6 @@ export function CarritoClient({ slug, tenant }: Props) {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none ring-[#2563EB] focus:ring-2"
               />
-              <p className="mt-1 text-xs text-[#9CA3AF]">
-                Si el comercio lo configuró, podés recibir un correo con el detalle del pedido.
-              </p>
             </div>
             {canUseCoupon ? (
               <div>
@@ -293,6 +324,19 @@ export function CarritoClient({ slug, tenant }: Props) {
                 className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none ring-[#2563EB] focus:ring-2"
               />
             </div>
+            <label className="flex items-start gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-xs text-[#4B5563]">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={acceptsTerms}
+                onChange={(e) => setAcceptsTerms(e.target.checked)}
+              />
+              <span>
+                Confirmo que la compra es realizada al comercio <strong>{tenant.name}</strong> y no a VentaXLink.
+                VentaXLink solo provee la plataforma.
+              </span>
+            </label>
+            <p className="text-[11px] text-[#9CA3AF]">{marketplaceTerms}</p>
 
             {error ? (
               <p className="text-sm text-red-600" role="alert">

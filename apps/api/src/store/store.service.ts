@@ -41,6 +41,7 @@ const tenantPublicSelect = {
   points_redeem_min_balance: true,
   points_redeem_percent: true,
   points_redeem_cost: true,
+  billing_payment_alias: true,
 } as const;
 
 function storeBaseUrl(): string {
@@ -120,6 +121,7 @@ export class StoreService {
         catalog_visible_cap: suspended ? CATALOG_CAP_SUSPENDED : null,
         catalog_total_products: suspended ? totalProducts : null,
         billing_hold_message,
+        billing_payment_alias: tenant.billing_payment_alias ?? null,
         points_ars_per_point:
           pe && tenant.points_ars_per_point
             ? tenant.points_ars_per_point.toString()
@@ -329,6 +331,9 @@ export class StoreService {
   }
 
   async checkout(slug: string, dto: CheckoutDto) {
+    if (dto.accepts_marketplace_terms !== true) {
+      throw new BadRequestException('Debés aceptar los términos de compra');
+    }
     if (!dto.items?.length) {
       throw new BadRequestException('Agregá al menos un producto');
     }
@@ -359,6 +364,7 @@ export class StoreService {
         points_redeem_min_balance: true,
         points_redeem_percent: true,
         points_redeem_cost: true,
+        billing_payment_alias: true,
       },
     });
     if (!tenant) throw new NotFoundException('Tienda no encontrada');
@@ -591,6 +597,7 @@ export class StoreService {
         subtotal: order.subtotal.toString(),
         discount_amount: order.discount_amount.toString(),
         total: order.total.toString(),
+        billing_payment_alias: tenant.billing_payment_alias ?? null,
         message:
           'Pedido recibido. El comercio te va a contactar para coordinar el pago y la entrega.',
       },

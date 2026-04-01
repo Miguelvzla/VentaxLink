@@ -11,10 +11,11 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
-import { extname, join, resolve } from 'path';
+import { extname, join } from 'path';
 import { JwtAuthGuard, JwtUserPayload } from '../auth/jwt-auth.guard';
+import { resolveUploadsRoot } from './uploads-path';
 
-const uploadsRoot = resolve(process.cwd(), 'uploads');
+const uploadsRoot = resolveUploadsRoot();
 
 function buildPublicFileUrl(
   req: { protocol: string; get: (h: string) => string | undefined },

@@ -1,12 +1,14 @@
 import {
   Body,
   Controller,
+  Get,
   HttpException,
   HttpStatus,
   Logger,
   Post,
 } from '@nestjs/common';
 import { OrderNotificationsService } from '../notifications/order-notifications.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CommercialContactDto } from './dto/commercial-contact.dto';
 
 @Controller('public')
@@ -15,7 +17,24 @@ export class PublicController {
 
   constructor(
     private readonly orderNotifications: OrderNotificationsService,
+    private readonly prisma: PrismaService,
   ) {}
+
+  @Get('legal')
+  async legal() {
+    const row = await this.prisma.platformSetting.findUnique({
+      where: { key: 'marketplace_terms' },
+      select: { value: true, updated_at: true },
+    });
+    const fallback =
+      'VentaXLink provee la plataforma tecnológica para publicar tiendas online. La compra se realiza directamente al comercio vendedor, que es responsable por precios, stock, entrega, facturación y postventa.';
+    return {
+      data: {
+        marketplace_terms: row?.value?.trim() || fallback,
+        updated_at: row?.updated_at?.toISOString() ?? null,
+      },
+    };
+  }
 
   /**
    * Espera al envío SMTP para no dar “ok” si el correo no salió (antes era fire-and-forget).

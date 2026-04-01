@@ -451,7 +451,7 @@ export function ProductosClient() {
                       onClick={() => fileRefs[idx].current?.click()}
                       className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-[#374151] hover:bg-gray-50 disabled:opacity-50"
                     >
-                      {uploadingSlot === idx ? "Subiendo…" : "Subir desde la PC"}
+                      {uploadingSlot === idx ? "Subiendo…" : "Subir Foto"}
                     </button>
                     {form.image_urls[idx] ? (
                       <span className="text-xs text-[#9CA3AF]">Se guarda al pulsar Guardar</span>
