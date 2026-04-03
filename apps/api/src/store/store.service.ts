@@ -140,9 +140,6 @@ export class StoreService {
         ...tenant,
         logo_url: rewriteStoredUploadsUrl(tenant.logo_url),
         banner_url: rewriteStoredUploadsUrl(tenant.banner_url),
-        mail_test_available:
-          process.env.ENABLE_STORE_SMTP_TEST === '1' ||
-          process.env.ENABLE_STORE_SMTP_TEST === 'true',
         catalog_limited: suspended,
         catalog_visible_cap: suspended ? CATALOG_CAP_SUSPENDED : null,
         catalog_total_products: suspended ? totalProducts : null,
@@ -257,8 +254,12 @@ export class StoreService {
         `[mail-test] error nodemailer slug=${slug}: ${msg}`,
         stack,
       );
+      const cloudSmtpHint =
+        /connection timeout|ETIMEDOUT|ECONNREFUSED/i.test(msg)
+          ? ' Desde varios datacenters (p. ej. Railway) Gmail a menudo no abre TCP a smtp.gmail.com:587: probá SMTP_IP_FAMILY=4 en la API; si sigue igual, usá SMTP de Brevo, SendGrid o Mailgun (host que ellos indiquen).'
+          : '';
       throw new BadGatewayException(
-        `No se pudo enviar el correo (SMTP): ${msg}. Revisá logs de la API en Railway y la contraseña de aplicación de Gmail.`,
+        `No se pudo enviar el correo (SMTP): ${msg}.${cloudSmtpHint} Revisá logs (mail-test) y contraseña de aplicación si usás Gmail.`,
       );
     }
 
@@ -278,6 +279,7 @@ export class StoreService {
     page: number,
     limit: number,
     searchRaw?: string,
+    filters?: { featuredOnly?: boolean; newOnly?: boolean },
   ) {
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     const safePage = Math.max(page, 1);
@@ -307,10 +309,19 @@ export class StoreService {
       ...(searchOr ?? {}),
     };
 
-    let where: Prisma.ProductWhereInput = whereBase;
+    const flagWhere: Prisma.ProductWhereInput = {
+      ...(filters?.featuredOnly ? { is_featured: true } : {}),
+      ...(filters?.newOnly ? { is_new: true } : {}),
+    };
+    const hasFlags =
+      filters?.featuredOnly === true || filters?.newOnly === true;
+
+    let where: Prisma.ProductWhereInput = hasFlags
+      ? { AND: [whereBase, flagWhere] }
+      : whereBase;
     if (suspended) {
       const ids = await this.visibleProductIdsForSuspended(tenant.id);
-      where = { AND: [whereBase, { id: { in: [...ids] } }] };
+      where = { AND: [where, { id: { in: [...ids] } }] };
     }
 
     const [fullTotal, listedTotal, rows] = await this.prisma.$transaction([

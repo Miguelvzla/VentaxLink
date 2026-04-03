@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { PublicTenant } from "@/lib/api";
-import { postCheckout } from "@/lib/checkout";
 import { type CartLine, getCart, removeLine, setCart, updateLineQuantity } from "@/lib/cart";
+import { loadCheckoutProfile, saveCheckoutProfile } from "@/lib/checkout-profile";
+import { postCheckout } from "@/lib/checkout";
 
 type Props = { slug: string; tenant: PublicTenant };
 
@@ -39,6 +40,7 @@ export function CarritoClient({ slug, tenant }: Props) {
     "VentaXLink provee la plataforma tecnológica. La compra se realiza directamente al comercio vendedor.",
   );
   const [acceptsTerms, setAcceptsTerms] = useState(false);
+  const [saveDataForLater, setSaveDataForLater] = useState(false);
   const [done, setDone] = useState<{
     order_number: number;
     message: string;
@@ -64,6 +66,17 @@ export function CarritoClient({ slug, tenant }: Props) {
     const onUpdate = () => setLines(getCart(slug));
     window.addEventListener("ventaxlink-cart", onUpdate);
     return () => window.removeEventListener("ventaxlink-cart", onUpdate);
+  }, [slug]);
+
+  useEffect(() => {
+    const saved = loadCheckoutProfile(slug);
+    if (saved) {
+      setName(saved.name);
+      setPhone(saved.phone);
+      setEmail(saved.email);
+      setDeliveryType(saved.delivery_type);
+      setNotes(saved.notes);
+    }
   }, [slug]);
 
   useEffect(() => {
@@ -121,6 +134,15 @@ export function CarritoClient({ slug, tenant }: Props) {
         total: res.data.total,
         billing_payment_alias: res.data.billing_payment_alias ?? null,
       });
+      if (saveDataForLater) {
+        saveCheckoutProfile(slug, {
+          name: n,
+          phone: p,
+          email: email.trim(),
+          delivery_type: deliveryType,
+          notes: notes.trim(),
+        });
+      }
       setCart(slug, []);
       setLines([]);
     } catch (err) {
@@ -324,6 +346,15 @@ export function CarritoClient({ slug, tenant }: Props) {
                 className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none ring-[#2563EB] focus:ring-2"
               />
             </div>
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-[#374151]">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={saveDataForLater}
+                onChange={(e) => setSaveDataForLater(e.target.checked)}
+              />
+              <span>Guardar mis datos para futuras compras (solo en este dispositivo)</span>
+            </label>
             <label className="flex items-start gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-xs text-[#4B5563]">
               <input
                 type="checkbox"

@@ -43,8 +43,17 @@ export class StoreController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(24), ParseIntPipe) limit: number,
     @Query('q') q?: string,
+    @Query('featured') featured?: string,
+    @Query('new_only') new_only?: string,
   ) {
-    return this.store.listProducts(slug, page, limit, q);
+    const featuredOnly =
+      featured === '1' || featured?.toLowerCase() === 'true';
+    const newOnly =
+      new_only === '1' || new_only?.toLowerCase() === 'true';
+    return this.store.listProducts(slug, page, limit, q, {
+      featuredOnly,
+      newOnly,
+    });
   }
 
   @Get(':slug')

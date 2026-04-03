@@ -46,53 +46,7 @@ export type PublicTenant = {
   catalog_total_products?: number | null;
   billing_hold_message?: string | null;
   billing_payment_alias?: string | null;
-  /** true si la API tiene ENABLE_STORE_SMTP_TEST (botón de prueba SMTP) */
-  mail_test_available?: boolean;
 };
-
-function nestErrorMessage(body: unknown, fallback: string): string {
-  if (!body || typeof body !== "object") return fallback;
-  const m = (body as { message?: unknown }).message;
-  if (typeof m === "string" && m.trim()) return m;
-  if (Array.isArray(m) && m.length && typeof m[0] === "string") return m[0];
-  return fallback;
-}
-
-export type MailTestResponse = {
-  ok: boolean;
-  message: string;
-  to_hint?: string;
-};
-
-/** POST prueba SMTP (solo Pro/Mayorista; requiere ENABLE_STORE_SMTP_TEST en la API). */
-export async function postStoreMailTest(slug: string): Promise<MailTestResponse> {
-  let res: Response;
-  try {
-    res = await fetch(`${apiBase()}/store/${slug}/mail-test`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    });
-  } catch (e) {
-    rethrowIfApiUnreachable(e);
-  }
-  const raw = await res.text();
-  let parsed: unknown = null;
-  try {
-    parsed = JSON.parse(raw) as unknown;
-  } catch {
-    /* cuerpo no JSON */
-  }
-  if (!res.ok) {
-    const detail = nestErrorMessage(parsed, raw.slice(0, 280) || `Error ${res.status}`);
-    throw new Error(detail);
-  }
-  const j = parsed as MailTestResponse;
-  if (!j || typeof j !== "object" || j.ok !== true) {
-    throw new Error("Respuesta inesperada de la API");
-  }
-  return j;
-}
 
 /** Puntos que equivalen al precio del producto (piso), si el programa está activo. */
 export function estimateProductPoints(tenant: PublicTenant, price: string): number | null {
@@ -183,15 +137,23 @@ export async function fetchProduct(slug: string, pSlug: string) {
   return (await res.json()) as { data: ProductDetail };
 }
 
+export type FetchProductsFilters = {
+  featuredOnly?: boolean;
+  newOnly?: boolean;
+};
+
 export async function fetchProducts(
   slug: string,
   page = 1,
   limit = 24,
   search?: string | null,
+  filters?: FetchProductsFilters,
 ) {
   const q = new URLSearchParams({ page: String(page), limit: String(limit) });
   const s = search?.trim();
   if (s) q.set("q", s.slice(0, 120));
+  if (filters?.featuredOnly) q.set("featured", "1");
+  if (filters?.newOnly) q.set("new_only", "1");
   let res: Response;
   try {
     res = await fetch(`${apiBase()}/store/${slug}/products?${q}`, {
