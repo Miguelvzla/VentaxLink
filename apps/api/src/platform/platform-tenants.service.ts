@@ -1,9 +1,12 @@
+import * as crypto from 'crypto';
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { PlanType, Prisma, TenantStatus } from '@prisma/client';
+import { PlanType, Prisma, TenantStatus, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import type { PlatformPatchTenantDto } from './dto/platform-patch-tenant.dto';
 
@@ -13,6 +16,8 @@ const DEFAULT_MARKETPLACE_TERMS =
 
 @Injectable()
 export class PlatformTenantsService {
+  private readonly logger = new Logger(PlatformTenantsService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async getMarketplaceTerms() {
@@ -305,6 +310,62 @@ export class PlatformTenantsService {
           last_panel_login_at: last ? last.toISOString() : null,
         };
       }),
+    };
+  }
+
+  /**
+   * Solo plataforma: asigna contraseña provisoria al usuario OWNER activo del comercio.
+   * Invalida tokens de “olvidé contraseña”. La clave solo se devuelve una vez en la respuesta.
+   */
+  async resetOwnerPassword(tenantId: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, slug: true, name: true, email: true },
+    });
+    if (!tenant) {
+      throw new NotFoundException('Comercio no encontrado');
+    }
+
+    const owner = await this.prisma.user.findFirst({
+      where: {
+        tenant_id: tenantId,
+        role: UserRole.OWNER,
+        is_active: true,
+      },
+      select: { id: true, email: true, name: true },
+    });
+    if (!owner) {
+      throw new NotFoundException(
+        'No hay un titular (OWNER) activo en este comercio. El comercio puede usar “Olvidé mi contraseña” en el login del panel si tiene Resend configurado.',
+      );
+    }
+
+    const temporaryPassword = `Vxl_${crypto.randomBytes(10).toString('base64url')}`;
+    const password_hash = await bcrypt.hash(temporaryPassword, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.deleteMany({ where: { user_id: owner.id } }),
+      this.prisma.user.update({
+        where: { id: owner.id },
+        data: { password_hash },
+      }),
+    ]);
+
+    this.logger.warn(
+      `[platform] reset contraseña titular tenant=${tenant.slug} owner=${owner.email.slice(0, 2)}…`,
+    );
+
+    return {
+      data: {
+        temporary_password: temporaryPassword,
+        user_email: owner.email,
+        user_name: owner.name,
+        tenant_name: tenant.name,
+        tenant_slug: tenant.slug,
+        tenant_email: tenant.email,
+        message:
+          'Comunicá esta contraseña al comercio por un canal seguro. No podrás volver a verla en el sistema.',
+      },
     };
   }
 }

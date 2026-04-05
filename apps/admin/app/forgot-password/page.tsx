@@ -13,7 +13,8 @@ export default function ForgotPasswordPage() {
         </Link>
         <h1 className="text-center text-lg font-semibold text-[#111827]">Olvidé mi contraseña</h1>
         <p className="mt-1 text-center text-sm text-[#9CA3AF]">
-          Te enviamos un enlace al mail del comercio para elegir una clave nueva.
+          Autogestión: te enviamos un enlace al mail del comercio para elegir una clave nueva (requiere Resend en el
+          servidor). Si no recibís el correo, contactá a soporte VentaXLink.
         </p>
         <ForgotPasswordForm />
         <a

@@ -343,6 +343,12 @@ export function PlatformTenantsClient() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/platform/reset-claves"
+            className="rounded-xl border border-amber-700/80 bg-amber-950/30 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-900/40"
+          >
+            Reset acceso titular
+          </Link>
           <button
             type="button"
             disabled={loading || filtered.length === 0}

@@ -5,6 +5,7 @@ import {
   HttpCode,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -31,6 +32,13 @@ export class PlatformTenantsController {
   @HttpCode(200)
   patchMarketplaceTerms(@Body() dto: { terms?: string }) {
     return this.tenants.patchMarketplaceTerms(dto.terms ?? '');
+  }
+
+  /** Super admin: contraseña provisoria para el OWNER del comercio (aparte del flujo “olvidé contraseña”). */
+  @Post(':id/reset-owner-password')
+  @HttpCode(200)
+  resetOwnerPassword(@Param('id') id: string) {
+    return this.tenants.resetOwnerPassword(id);
   }
 
   @Patch(':id')

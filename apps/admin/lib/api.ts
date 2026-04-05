@@ -318,6 +318,22 @@ export async function patchJsonPlatform<T>(path: string, token: string, body: un
   return readJsonResponse<T>(r, `Error ${r.status}`, onPlatformUnauthorized);
 }
 
+export async function postJsonPlatform<T>(
+  path: string,
+  token: string,
+  body: unknown = {},
+): Promise<T> {
+  const r = await fetch(`${base}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body ?? {}),
+  });
+  return readJsonResponse<T>(r, `Error ${r.status}`, onPlatformUnauthorized);
+}
+
 export async function patchJson<T>(path: string, token: string, body: unknown): Promise<T> {
   const r = await fetch(`${base}${path}`, {
     method: "PATCH",
