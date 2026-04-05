@@ -4,14 +4,24 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { postJson, type AuthResponse } from "@/lib/api";
-import { getToken, saveSession } from "@/lib/auth";
+import { isTenantTokenValid, postJson, type AuthResponse } from "@/lib/api";
+import { clearSession, getToken, saveSession } from "@/lib/auth";
 
 export function LoginForm() {
   const router = useRouter();
 
   useEffect(() => {
-    if (getToken()) router.replace("/dashboard");
+    const t = getToken();
+    if (!t) return;
+    let cancelled = false;
+    void isTenantTokenValid(t).then((ok) => {
+      if (cancelled) return;
+      if (ok) router.replace("/dashboard");
+      else clearSession();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

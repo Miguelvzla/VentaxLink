@@ -216,6 +216,20 @@ async function readJsonResponse<T>(
   return json as T;
 }
 
+/**
+ * POST sin sesión: un 401 es error de credenciales / validación, no “sesión vencida”.
+ * Si usáramos onUnauthorized aquí, al fallar el login se limpia storage y se recarga /login
+ * y el mensaje “Sesión vencida” desaparece en un flash.
+ */
+function shouldClearSessionOn401(path: string): boolean {
+  const p = path.split("?")[0] ?? path;
+  return (
+    p !== "/auth/login" &&
+    p !== "/auth/register" &&
+    p !== "/platform-auth/login"
+  );
+}
+
 export async function postJson<T>(path: string, body: unknown, token?: string): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -236,7 +250,26 @@ export async function postJson<T>(path: string, body: unknown, token?: string): 
           : "Error de red";
     throw new Error(msg);
   }
-  return readJsonResponse<T>(r, `Error ${r.status}`, onUnauthorized);
+  const on401 = shouldClearSessionOn401(path) ? onUnauthorized : undefined;
+  return readJsonResponse<T>(r, `Error ${r.status}`, on401);
+}
+
+/** Comprueba si el JWT sigue siendo aceptado por la API, sin limpiar sesión ni redirigir (útil en /login). */
+export async function isTenantTokenValid(token: string): Promise<boolean> {
+  const r = await fetch(`${base}/tenant/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  return r.ok;
+}
+
+/** Igual que isTenantTokenValid, para el JWT de plataforma (útil en /platform/login). */
+export async function isPlatformTokenValid(token: string): Promise<boolean> {
+  const r = await fetch(`${base}/platform/tenants`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  return r.ok;
 }
 
 export async function getJson<T>(path: string, token: string): Promise<T> {

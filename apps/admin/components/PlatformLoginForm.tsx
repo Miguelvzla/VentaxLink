@@ -4,8 +4,12 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { postJson } from "@/lib/api";
-import { getPlatformToken, savePlatformToken } from "@/lib/platform-session";
+import { isPlatformTokenValid, postJson } from "@/lib/api";
+import {
+  clearPlatformSession,
+  getPlatformToken,
+  savePlatformToken,
+} from "@/lib/platform-session";
 
 type PlatformLoginResponse = {
   access_token: string;
@@ -21,7 +25,17 @@ export function PlatformLoginForm() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (getPlatformToken()) router.replace("/platform/tenants");
+    const t = getPlatformToken();
+    if (!t) return;
+    let cancelled = false;
+    void isPlatformTokenValid(t).then((ok) => {
+      if (cancelled) return;
+      if (ok) router.replace("/platform/tenants");
+      else clearPlatformSession();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   async function onSubmit(e: React.FormEvent) {
