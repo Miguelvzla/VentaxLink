@@ -182,6 +182,7 @@ async function bootstrap() {
     new PrismaClientExceptionFilter(httpAdapterHost.httpAdapter),
   );
   const boot = new Logger('Bootstrap');
+  // Redeploy API: Railway watch path /apps/api/** — forzar build tras cambios de volumen/vars.
   boot.log(
     `Uploads: UPLOADS_DIR efectivo = ${uploadsRoot} (configurá UPLOADS_DIR en Railway si hace falta)`,
   );
