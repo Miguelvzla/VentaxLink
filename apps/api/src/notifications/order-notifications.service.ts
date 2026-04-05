@@ -219,29 +219,74 @@ export class OrderNotificationsService {
   }
 
   private async sendMerchantEmail(p: OrderNotifyPayload): Promise<void> {
-    const transporter = this.createTransporter(p.tenantSmtp);
+    const to = p.tenantEmail?.trim();
+    if (!to) {
+      this.logger.warn(
+        `Pedido #${p.orderNumber}: el comercio no tiene email de contacto; no se envía aviso por correo`,
+      );
+      return;
+    }
+
     const subject = `[VentaXLink] Nuevo pedido #${p.orderNumber} — ${p.tenantName}`;
     const text = this.buildPlainText(p);
     const html = this.buildHtml(p);
     const replyTo = p.customerEmail?.trim() || undefined;
 
-    if (transporter) {
-      const from = this.mailFrom(p.tenantSmtp);
-      await transporter.sendMail({
-        from,
-        to: p.tenantEmail,
-        replyTo,
-        subject,
-        text,
-        html,
-      });
-      this.logger.log(`Email de pedido #${p.orderNumber} enviado a ${p.tenantEmail} (SMTP)`);
-      return;
+    // 1) SMTP del comercio (si está configurado)
+    const tenantTx =
+      p.tenantSmtp != null ? this.createTransporter(p.tenantSmtp) : null;
+    if (tenantTx) {
+      try {
+        await tenantTx.sendMail({
+          from: this.mailFrom(p.tenantSmtp),
+          to,
+          replyTo,
+          subject,
+          text,
+          html,
+        });
+        this.logger.log(
+          `Email de pedido #${p.orderNumber} enviado a ${to} (SMTP comercio)`,
+        );
+        return;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.logger.warn(
+          `SMTP del comercio falló para pedido #${p.orderNumber} (${msg}); se intenta SMTP de la plataforma o Resend`,
+        );
+      }
     }
 
+    // 2) SMTP global de la plataforma (mismo que bienvenida / contacto)
+    if (this.isGlobalSmtpConfigured()) {
+      try {
+        const globalTx = this.createTransporter(null);
+        if (globalTx) {
+          await globalTx.sendMail({
+            from: this.mailFrom(null),
+            to,
+            replyTo,
+            subject,
+            text,
+            html,
+          });
+          this.logger.log(
+            `Email de pedido #${p.orderNumber} enviado a ${to} (SMTP plataforma)`,
+          );
+          return;
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        this.logger.warn(
+          `SMTP plataforma falló para pedido #${p.orderNumber} (${msg}); se intenta Resend`,
+        );
+      }
+    }
+
+    // 3) Resend (p. ej. Railway sin SMTP saliente)
     if (this.resend.isConfigured()) {
       const ok = await this.resend.send({
-        to: p.tenantEmail.trim(),
+        to,
         subject,
         html,
         text,
@@ -249,18 +294,18 @@ export class OrderNotificationsService {
       });
       if (ok) {
         this.logger.log(
-          `Email de pedido #${p.orderNumber} enviado a ${p.tenantEmail} (Resend)`,
+          `Email de pedido #${p.orderNumber} enviado a ${to} (Resend)`,
         );
       } else {
         this.logger.warn(
-          `Resend no pudo enviar aviso de pedido #${p.orderNumber} a ${p.tenantEmail}`,
+          `Resend no pudo enviar aviso de pedido #${p.orderNumber} a ${to}`,
         );
       }
       return;
     }
 
-    this.logger.debug(
-      'Sin SMTP ni RESEND_API_KEY: se omite email al comercio por nuevo pedido',
+    this.logger.warn(
+      `No se pudo enviar email de pedido #${p.orderNumber} a ${to}: configurá SMTP del comercio, SMTP global (SMTP_HOST + MAIL_FROM) o RESEND_API_KEY en la API`,
     );
   }
 
