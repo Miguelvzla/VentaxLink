@@ -226,6 +226,8 @@ function shouldClearSessionOn401(path: string): boolean {
   return (
     p !== "/auth/login" &&
     p !== "/auth/register" &&
+    p !== "/auth/forgot-password" &&
+    p !== "/auth/reset-password" &&
     p !== "/platform-auth/login"
   );
 }
@@ -252,6 +254,22 @@ export async function postJson<T>(path: string, body: unknown, token?: string): 
   }
   const on401 = shouldClearSessionOn401(path) ? onUnauthorized : undefined;
   return readJsonResponse<T>(r, `Error ${r.status}`, on401);
+}
+
+export async function postForgotPassword(
+  email: string,
+): Promise<{ ok: boolean; message: string }> {
+  return postJson<{ ok: boolean; message: string }>("/auth/forgot-password", { email });
+}
+
+export async function postResetPassword(
+  token: string,
+  password: string,
+): Promise<{ ok: boolean; message: string }> {
+  return postJson<{ ok: boolean; message: string }>("/auth/reset-password", {
+    token,
+    password,
+  });
 }
 
 /** Comprueba si el JWT sigue siendo aceptado por la API, sin limpiar sesión ni redirigir (útil en /login). */

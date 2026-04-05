@@ -100,6 +100,11 @@ export function LoginForm() {
       >
         {loading ? "Entrando…" : "Entrar al panel"}
       </button>
+      <p className="text-center text-sm">
+        <Link href="/forgot-password" className="font-medium text-[#2563EB] hover:underline">
+          Olvidé mi contraseña
+        </Link>
+      </p>
       <p className="text-center text-sm text-[#6B7280]">
         ¿Todavía no tenés tienda?{" "}
         <Link href="/register" className="font-semibold text-[#2563EB] hover:underline">

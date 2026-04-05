@@ -65,6 +65,21 @@ async function bootstrap() {
     exposedHeaders: ['Content-Type'],
   });
 
+  /**
+   * Refuerzo: en algunos despliegues el 502 por timeout SMTP (u otros errores) llega al navegador
+   * sin las cabeceras que añade solo enableCors → "blocked by CORS". Setear Origin/Credentials
+   * al entrar la petición hace que sigan presentes al enviar el cuerpo del error.
+   */
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const origin = req.headers.origin;
+    if (typeof origin === 'string' && corsAllowed(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Vary', 'Origin');
+    }
+    next();
+  });
+
   app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '256kb' }));
   app.use(
     express.urlencoded({
@@ -90,6 +105,13 @@ async function bootstrap() {
   const authRegisterLimiter = rateLimit({
     windowMs: Number(process.env.RATE_LIMIT_REGISTER_WINDOW_MS || 60_000),
     max: Number(process.env.RATE_LIMIT_REGISTER_MAX || 5),
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: skipOptions,
+  });
+  const forgotPasswordLimiter = rateLimit({
+    windowMs: Number(process.env.RATE_LIMIT_FORGOT_PASSWORD_WINDOW_MS || 60_000),
+    max: Number(process.env.RATE_LIMIT_FORGOT_PASSWORD_MAX || 5),
     standardHeaders: true,
     legacyHeaders: false,
     skip: skipOptions,
@@ -126,6 +148,7 @@ async function bootstrap() {
   app.use('/v1', globalLimiter);
   app.use('/v1/auth/login', authLoginLimiter);
   app.use('/v1/auth/register', authRegisterLimiter);
+  app.use('/v1/auth/forgot-password', forgotPasswordLimiter);
   app.use('/v1/store/:slug/checkout', checkoutLimiter);
   app.use('/v1/store/:slug/track', trackLimiter);
   app.use('/v1/store/:slug/mail-test', mailTestLimiter);

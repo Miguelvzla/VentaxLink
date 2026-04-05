@@ -102,11 +102,24 @@ model User {
   refresh_token String?   @db.Text
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
-  tenant        Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  tenant                 Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  password_reset_tokens  PasswordResetToken[]
 
   @@unique([tenant_id, email])
   @@index([tenant_id])
   @@index([email])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  user_id    String
+  token_hash String   @unique
+  expires_at DateTime
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
 }
 
 model PlatformAdmin {
