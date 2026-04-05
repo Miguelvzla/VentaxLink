@@ -181,9 +181,22 @@ async function bootstrap() {
     new MulterExceptionFilter(),
     new PrismaClientExceptionFilter(httpAdapterHost.httpAdapter),
   );
-  new Logger('Bootstrap').log(
+  const boot = new Logger('Bootstrap');
+  boot.log(
     `Uploads: UPLOADS_DIR efectivo = ${uploadsRoot} (configurá UPLOADS_DIR en Railway si hace falta)`,
   );
+  if (
+    process.env.NODE_ENV === 'production' &&
+    !process.env.UPLOADS_DIR?.trim() &&
+    !uploadsRoot.includes('volume') &&
+    !uploadsRoot.includes('persist')
+  ) {
+    boot.warn(
+      'Los archivos subidos están en disco local del contenedor: se pierden al redeploy o reinicio (p. ej. Railway). ' +
+        'Montá un volumen y definí UPLOADS_DIR apuntando a esa carpeta, o usá solo URLs de imágenes externas. ' +
+        'Definí PUBLIC_API_URL con tu dominio estable de la API para que las rutas /v1/uploads/… resuelvan bien.',
+    );
+  }
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

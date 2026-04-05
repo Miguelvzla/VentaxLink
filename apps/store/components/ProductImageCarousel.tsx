@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { filterRenderableProductImages } from "@/lib/product-images";
+import { resolvePublicMediaUrl } from "@/lib/public-media-url";
 
 type Img = { url: string; alt: string | null };
 
@@ -53,7 +54,7 @@ export function ProductImageCarousel({ images, productName, productHref }: Props
         ) : null}
         <div className={`relative z-[1] h-full w-full ${passThrough ? "pointer-events-none" : ""}`}>
           <Image
-            src={current.url}
+            src={resolvePublicMediaUrl(current.url)}
             alt={current.alt || productName}
             fill
             className={`object-cover ${passThrough ? "pointer-events-none" : ""}`}
@@ -104,7 +105,12 @@ export function ProductImageCarousel({ images, productName, productHref }: Props
               }`}
               aria-label={`Ver imagen ${i + 1}`}
             >
-              <Image src={im.url} alt={im.alt || ""} fill className="object-cover" />
+              <Image
+                src={resolvePublicMediaUrl(im.url)}
+                alt={im.alt || ""}
+                fill
+                className="object-cover"
+              />
             </button>
           ))}
         </div>

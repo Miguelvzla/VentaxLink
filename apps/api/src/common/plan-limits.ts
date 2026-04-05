@@ -42,3 +42,8 @@ export function analyticsRangeDaysForPlan(plan: PlanType): number {
 export function productDetailViewsAnalyticsForPlan(plan: PlanType): boolean {
   return plan === PlanType.PRO || plan === PlanType.WHOLESALE;
 }
+
+/** Dashboard analítico avanzado (gráficos, valoración, más vendidos). */
+export function proAnalyticsDashboardForPlan(plan: PlanType): boolean {
+  return plan === PlanType.PRO || plan === PlanType.WHOLESALE;
+}

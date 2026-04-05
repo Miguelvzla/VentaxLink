@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DeliveryType, PlanType } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
+import { ResendMailService } from './resend-mail.service';
 
 export type OrderNotifyLine = {
   productName: string;
@@ -89,6 +90,8 @@ function adminPanelUrl(): string {
 @Injectable()
 export class OrderNotificationsService {
   private readonly logger = new Logger(OrderNotificationsService.name);
+
+  constructor(private readonly resend: ResendMailService) {}
 
   scheduleNotifyNewOrder(payload: OrderNotifyPayload): void {
     void this.notifyNewOrder(payload).catch((err) => {
@@ -217,23 +220,48 @@ export class OrderNotificationsService {
 
   private async sendMerchantEmail(p: OrderNotifyPayload): Promise<void> {
     const transporter = this.createTransporter(p.tenantSmtp);
-    if (!transporter) {
-      this.logger.debug(
-        'Sin SMTP (ni del comercio ni global): se omite email al comercio',
-      );
+    const subject = `[VentaXLink] Nuevo pedido #${p.orderNumber} — ${p.tenantName}`;
+    const text = this.buildPlainText(p);
+    const html = this.buildHtml(p);
+    const replyTo = p.customerEmail?.trim() || undefined;
+
+    if (transporter) {
+      const from = this.mailFrom(p.tenantSmtp);
+      await transporter.sendMail({
+        from,
+        to: p.tenantEmail,
+        replyTo,
+        subject,
+        text,
+        html,
+      });
+      this.logger.log(`Email de pedido #${p.orderNumber} enviado a ${p.tenantEmail} (SMTP)`);
       return;
     }
-    const from = this.mailFrom(p.tenantSmtp);
-    const subject = `[VentaXLink] Nuevo pedido #${p.orderNumber} — ${p.tenantName}`;
-    await transporter.sendMail({
-      from,
-      to: p.tenantEmail,
-      replyTo: p.customerEmail || undefined,
-      subject,
-      text: this.buildPlainText(p),
-      html: this.buildHtml(p),
-    });
-    this.logger.log(`Email de pedido #${p.orderNumber} enviado a ${p.tenantEmail}`);
+
+    if (this.resend.isConfigured()) {
+      const ok = await this.resend.send({
+        to: p.tenantEmail.trim(),
+        subject,
+        html,
+        text,
+        replyTo,
+      });
+      if (ok) {
+        this.logger.log(
+          `Email de pedido #${p.orderNumber} enviado a ${p.tenantEmail} (Resend)`,
+        );
+      } else {
+        this.logger.warn(
+          `Resend no pudo enviar aviso de pedido #${p.orderNumber} a ${p.tenantEmail}`,
+        );
+      }
+      return;
+    }
+
+    this.logger.debug(
+      'Sin SMTP ni RESEND_API_KEY: se omite email al comercio por nuevo pedido',
+    );
   }
 
   private async sendCustomerEmailIfNeeded(p: OrderNotifyPayload): Promise<void> {
@@ -277,15 +305,23 @@ export class OrderNotificationsService {
 <p><a href="${escapeHtml(p.trackUrl)}">Ir a la tienda</a></p>
 <p style="color:#666;font-size:14px">Este correo fue enviado por VentaXLink como proveedor del servicio. La compra fue realizada al comercio <strong>${escapeHtml(p.tenantName)}</strong>, responsable de la venta, pago y entrega.</p>
 </body></html>`;
-    const ok = await this.sendPlatformEmail({
+    let ok = await this.sendPlatformEmail({
       to: p.customerEmail.trim(),
       subject,
       text,
       html,
     });
+    if (!ok && this.resend.isConfigured()) {
+      ok = await this.resend.send({
+        to: p.customerEmail.trim(),
+        subject,
+        html,
+        text,
+      });
+    }
     if (!ok) {
       this.logger.warn(
-        `No se pudo enviar confirmación al cliente ${p.customerEmail}: SMTP global no configurado`,
+        `No se pudo enviar confirmación al cliente ${p.customerEmail}: falta SMTP global y Resend`,
       );
       return;
     }
@@ -312,8 +348,9 @@ export class OrderNotificationsService {
       `Total: $${p.total}`,
       ``,
       `Enlace tienda: ${p.trackUrl}`,
+      `Panel: ${adminPanelUrl()}/login`,
       ``,
-      `Podés gestionar el estado del pedido en el panel de administración.`,
+      `Podés gestionar el estado del pedido en Pedidos del panel.`,
     ]
       .filter(Boolean)
       .join('\n');
@@ -342,8 +379,8 @@ ${p.notes ? `<tr><td style="padding:4px 12px 4px 0;color:#555;vertical-align:top
 <tbody>${rows}</tbody>
 </table>
 <p style="margin-top:20px;font-size:18px"><strong>Total: $${escapeHtml(p.total)}</strong></p>
-<p><a href="${escapeHtml(p.trackUrl)}">Abrir tienda pública</a></p>
-<p style="color:#666;font-size:14px">Gestioná el pedido desde el panel VentaXLink.</p>
+<p><a href="${escapeHtml(p.trackUrl)}">Abrir tienda pública</a> · <a href="${escapeHtml(adminPanelUrl())}/login">Ir al panel</a></p>
+<p style="color:#666;font-size:14px">Gestioná el pedido desde Pedidos en el panel VentaXLink.</p>
 </body></html>`;
   }
 

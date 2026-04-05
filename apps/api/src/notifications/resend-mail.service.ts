@@ -16,6 +16,7 @@ export class ResendMailService {
     subject: string;
     html: string;
     text?: string;
+    replyTo?: string;
   }): Promise<boolean> {
     const key = process.env.RESEND_API_KEY?.trim();
     const from =
@@ -39,6 +40,9 @@ export class ResendMailService {
           subject: params.subject,
           html: params.html,
           ...(params.text ? { text: params.text } : {}),
+          ...(params.replyTo?.trim()
+            ? { reply_to: params.replyTo.trim() }
+            : {}),
         }),
       });
       const body = await r.text();

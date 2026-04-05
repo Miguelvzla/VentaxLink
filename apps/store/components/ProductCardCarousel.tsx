@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { filterRenderableProductImages } from "@/lib/product-images";
+import { resolvePublicMediaUrl } from "@/lib/public-media-url";
 
 type Img = { url: string; alt: string | null };
 
@@ -35,7 +36,7 @@ export function ProductCardCarousel({ images, name }: { images: Img[]; name: str
   return (
     <div className="relative h-full w-full pointer-events-none">
       <Image
-        src={current.url}
+        src={resolvePublicMediaUrl(current.url)}
         alt={current.alt || name}
         fill
         className="object-cover pointer-events-none"

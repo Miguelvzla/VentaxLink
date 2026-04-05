@@ -14,18 +14,11 @@ import { mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { JwtAuthGuard, JwtUserPayload } from '../auth/jwt-auth.guard';
-import { buildUploadsPublicUrl } from './public-asset-url';
+import { buildUploadsStoredPath } from './public-asset-url';
 import { resolveUploadsRoot } from './uploads-path';
 
 const uploadsRoot = resolveUploadsRoot();
 const uploadLog = new Logger('UploadsController');
-
-function buildPublicFileUrl(
-  req: { protocol: string; get: (h: string) => string | undefined },
-  rel: string,
-) {
-  return buildUploadsPublicUrl(rel, req);
-}
 
 function tenantUploadDir(req: unknown) {
   const user = (req as { user: JwtUserPayload }).user;
@@ -93,7 +86,7 @@ export class UploadsController {
   ) {
     if (!file) throw new BadRequestException('Seleccioná un archivo');
     const rel = `tenants/${req.user.tid}/${file.filename}`;
-    return { url: buildPublicFileUrl(req, rel) };
+    return { url: buildUploadsStoredPath(rel) };
   }
 
   @Post('tenant-logo')
@@ -125,7 +118,7 @@ export class UploadsController {
   ) {
     if (!file) throw new BadRequestException('Seleccioná un archivo');
     const rel = `tenants/${req.user.tid}/${file.filename}`;
-    return { url: buildPublicFileUrl(req, rel) };
+    return { url: buildUploadsStoredPath(rel) };
   }
 
   @Post('tenant-banner')
@@ -157,6 +150,6 @@ export class UploadsController {
   ) {
     if (!file) throw new BadRequestException('Seleccioná un archivo');
     const rel = `tenants/${req.user.tid}/${file.filename}`;
-    return { url: buildPublicFileUrl(req, rel) };
+    return { url: buildUploadsStoredPath(rel) };
   }
 }

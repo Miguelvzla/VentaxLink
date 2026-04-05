@@ -5,6 +5,7 @@ import { FloatingCartBar } from "@/components/FloatingCartBar";
 import { StoreHeader } from "@/components/StoreHeader";
 import { StoreVisitTracker } from "@/components/StoreVisitTracker";
 import { fetchTenant } from "@/lib/api";
+import { resolvePublicMediaUrl } from "@/lib/public-media-url";
 
 export async function generateMetadata({
   params,
@@ -18,13 +19,14 @@ export async function generateMetadata({
   }
 
   const logo = tenant.logo_url?.trim();
+  const logoAbsolute = logo ? resolvePublicMediaUrl(logo) : "";
   const fallbackIcon = "/ventaxlink-logo.png";
   const base =
     (process.env.NEXT_PUBLIC_STORE_URL ?? "http://localhost:3003").replace(/\/$/, "") ||
     "http://localhost:3003";
   const canonical = `${base}/tienda/${slug}`;
   const desc = tenant.description?.trim() || `Comprá en ${tenant.name}`;
-  const ogImage = logo || `${base}${fallbackIcon}`;
+  const ogImage = logoAbsolute || `${base}${fallbackIcon}`;
 
   return {
     metadataBase: new URL(base),
@@ -45,11 +47,11 @@ export async function generateMetadata({
       description: desc,
       images: [ogImage],
     },
-    icons: logo
+    icons: logoAbsolute
       ? {
-          icon: [{ url: logo }],
-          apple: [{ url: logo, sizes: "180x180" }],
-          shortcut: logo,
+          icon: [{ url: logoAbsolute }],
+          apple: [{ url: logoAbsolute, sizes: "180x180" }],
+          shortcut: logoAbsolute,
         }
       : {
           icon: [{ url: fallbackIcon, type: "image/png" }],

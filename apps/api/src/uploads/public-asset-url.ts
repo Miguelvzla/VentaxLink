@@ -26,6 +26,15 @@ export function buildUploadsPublicUrl(
 }
 
 /**
+ * Valor a guardar en DB: solo ruta bajo la API. Así un cambio de dominio (Railway, custom domain)
+ * no deja URLs rotas; la API y los front reconstruyen la URL absoluta con PUBLIC_API_URL.
+ */
+export function buildUploadsStoredPath(rel: string): string {
+  const clean = rel.replace(/^\/+/, '');
+  return `/v1/uploads/${clean}`;
+}
+
+/**
  * Reescribe URLs propias de uploads al origen actual de la API.
  * URLs externas (Imgur, etc.) se dejan igual.
  */
@@ -51,6 +60,11 @@ export function rewriteStoredUploadsUrl(
 
   if (trimmed.startsWith('/v1/uploads/')) {
     return `${origin}${trimmed}`;
+  }
+
+  /** Path relativo sin host (algunos proxies / clientes antiguos). */
+  if (trimmed.startsWith('v1/uploads/')) {
+    return `${origin}/${trimmed}`;
   }
 
   return trimmed;

@@ -7,6 +7,7 @@ import { ProductShareButton } from "@/components/ProductShareButton";
 import { ProductViewTracker } from "@/components/ProductViewTracker";
 import { estimateProductPoints, fetchProduct, fetchTenant } from "@/lib/api";
 import { filterRenderableProductImages } from "@/lib/product-images";
+import { resolvePublicMediaUrl } from "@/lib/public-media-url";
 
 function formatArs(value: string) {
   const n = Number(value);
@@ -60,7 +61,7 @@ export default async function ProductoDetallePage({
               <div className="pointer-events-none relative z-[1] h-full w-full">
                 {images[0] ? (
                   <Image
-                    src={images[0].url}
+                    src={resolvePublicMediaUrl(images[0].url)}
                     alt={images[0].alt || p.name}
                     fill
                     className="object-cover"
@@ -80,7 +81,12 @@ export default async function ProductoDetallePage({
                   className="relative z-[1] block h-20 w-20 shrink-0 overflow-hidden rounded-lg ring-1 ring-gray-100 transition hover:ring-2 hover:ring-[#2563EB]/40"
                   aria-label={`Ver ${p.name}`}
                 >
-                  <Image src={im.url} alt={im.alt || ""} fill className="object-cover" />
+                  <Image
+                    src={resolvePublicMediaUrl(im.url)}
+                    alt={im.alt || ""}
+                    fill
+                    className="object-cover"
+                  />
                 </Link>
               ))}
             </div>

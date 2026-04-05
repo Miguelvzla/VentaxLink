@@ -1,5 +1,6 @@
 import { StoreHeaderActions } from "@/components/StoreHeaderActions";
 import type { PublicTenant } from "@/lib/api";
+import { resolvePublicMediaUrl } from "@/lib/public-media-url";
 
 type Props = { tenant: PublicTenant; slug: string };
 
@@ -40,7 +41,7 @@ export function StoreHeader({ tenant, slug }: Props) {
         <div className="relative h-36 w-full overflow-hidden sm:h-44 md:h-48">
           {/* eslint-disable-next-line @next/next/no-img-element -- URLs externas (API/uploads) */}
           <img
-            src={banner}
+            src={resolvePublicMediaUrl(banner)}
             alt=""
             className="h-full w-full object-cover transition-transform duration-700 ease-out hover:scale-[1.02]"
           />
@@ -56,7 +57,7 @@ export function StoreHeader({ tenant, slug }: Props) {
               <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-md ring-2 ring-white transition-shadow hover:shadow-lg sm:h-24 sm:w-24 md:h-28 md:w-28">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={tenant.logo_url.trim()}
+                  src={resolvePublicMediaUrl(tenant.logo_url.trim())}
                   alt={tenant.name}
                   className="h-full w-full object-contain p-1.5 sm:p-2"
                 />

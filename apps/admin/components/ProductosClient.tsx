@@ -11,6 +11,7 @@ import {
   patchJson,
   postJson,
   postUploadProductImage,
+  resolvePublicMediaUrl,
 } from "@/lib/api";
 import { getStoredTenant, getToken } from "@/lib/auth";
 
@@ -28,6 +29,8 @@ type FormState = {
   price: string;
   compare_price: string;
   stock: string;
+  /** Posición en catálogo (1 = primero); vacío en producto nuevo = al final automático */
+  sort_order: string;
   image_urls: [string, string, string];
   is_active: boolean;
   is_featured: boolean;
@@ -72,6 +75,7 @@ const emptyForm = (): FormState => ({
   price: "",
   compare_price: "",
   stock: "0",
+  sort_order: "",
   image_urls: ["", "", ""],
   is_active: true,
   is_featured: false,
@@ -96,6 +100,7 @@ function productToForm(p: AdminProduct): FormState {
     price: p.price,
     compare_price: p.compare_price ?? "",
     stock: String(p.stock),
+    sort_order: String(p.sort_order ?? 0),
     image_urls,
     is_active: p.is_active,
     is_featured: p.is_featured,
@@ -178,6 +183,15 @@ export function ProductosClient() {
       setError("Poné un stock válido");
       return;
     }
+    let sortOrderNum: number | undefined;
+    if (form.sort_order.trim()) {
+      const pos = Number.parseInt(form.sort_order.trim(), 10);
+      if (Number.isNaN(pos) || pos < 1) {
+        setError("La posición tiene que ser un número entero ≥ 1 (1 = primero en el catálogo, sin contar destacados)");
+        return;
+      }
+      sortOrderNum = pos;
+    }
     let compareNum: number | undefined;
     if (form.compare_price.trim()) {
       const c = Number(form.compare_price.replace(",", "."));
@@ -221,6 +235,7 @@ export function ProductosClient() {
       if (compareNum != null) body.compare_price = compareNum;
       const slug = form.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
       if (slug) body.slug = slug;
+      if (sortOrderNum !== undefined) body.sort_order = sortOrderNum;
 
       if (form.id) {
         body.image_urls = urls;
@@ -368,6 +383,27 @@ export function ProductosClient() {
                 onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[#374151] outline-none ring-[#22C55E] focus:ring-2"
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#374151]">
+                Posición en el catálogo
+              </label>
+              <input
+                inputMode="numeric"
+                value={form.sort_order}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    sort_order: e.target.value.replace(/\D/g, ""),
+                  }))
+                }
+                placeholder={form.id ? undefined : "Auto (al final)"}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[#374151] outline-none ring-[#22C55E] focus:ring-2"
+              />
+              <p className="mt-1 text-xs text-[#6B7280]">
+                1 = aparece primero (después de los productos destacados). Números más altos, más abajo.
+                {form.id ? "" : " Si lo dejás vacío al crear, se asigna solo al final."}
+              </p>
             </div>
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-[#374151]">Descripción corta</label>
@@ -545,6 +581,7 @@ export function ProductosClient() {
               <thead className="border-b border-gray-100 bg-[#FAFAFA] text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
                 <tr>
                   <th className="px-4 py-3 w-14">Foto</th>
+                  <th className="px-3 py-3 w-16 text-center">N.º</th>
                   <th className="px-4 py-3">Producto</th>
                   <th className="px-4 py-3">Precio</th>
                   <th className="px-4 py-3">Stock</th>
@@ -558,7 +595,7 @@ export function ProductosClient() {
                     <td className="px-4 py-3 align-middle">
                       {p.primary_image_url ? (
                         <Image
-                          src={p.primary_image_url}
+                          src={resolvePublicMediaUrl(p.primary_image_url)}
                           alt=""
                           width={40}
                           height={40}
@@ -570,6 +607,9 @@ export function ProductosClient() {
                           —
                         </span>
                       )}
+                    </td>
+                    <td className="px-3 py-3 text-center tabular-nums text-[#6B7280]">
+                      {p.sort_order ?? "—"}
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-[#111827]">{p.name}</p>

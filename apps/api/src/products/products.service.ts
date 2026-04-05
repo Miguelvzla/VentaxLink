@@ -39,6 +39,7 @@ const productAdminSelect = {
   price: true,
   compare_price: true,
   stock: true,
+  sort_order: true,
   is_active: true,
   is_featured: true,
   is_new: true,
@@ -69,6 +70,7 @@ export class ProductsService {
     price: Prisma.Decimal;
     compare_price: Prisma.Decimal | null;
     stock: number;
+    sort_order: number;
     is_active: boolean;
     is_featured: boolean;
     is_new: boolean;
@@ -123,7 +125,11 @@ export class ProductsService {
   async list(tenantId: string) {
     const rows = await this.prisma.product.findMany({
       where: { tenant_id: tenantId },
-      orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }],
+      orderBy: [
+        { is_featured: 'desc' },
+        { sort_order: 'asc' },
+        { created_at: 'desc' },
+      ],
       select: productAdminSelect,
     });
     return { data: rows.map((r) => this.serializeAdminProduct(r)) };
@@ -164,6 +170,14 @@ export class ProductsService {
 
     try {
       const newId = await this.prisma.$transaction(async (tx) => {
+        let sortOrder = dto.sort_order ?? null;
+        if (sortOrder == null) {
+          const agg = await tx.product.aggregate({
+            where: { tenant_id: tenantId },
+            _max: { sort_order: true },
+          });
+          sortOrder = (agg._max.sort_order ?? 0) + 1;
+        }
         const created = await tx.product.create({
           data: {
             tenant_id: tenantId,
@@ -175,6 +189,7 @@ export class ProductsService {
             compare_price:
               dto.compare_price != null ? toDecimal(dto.compare_price) : null,
             stock: dto.stock ?? 0,
+            sort_order: sortOrder,
             is_active: dto.is_active ?? true,
             is_featured: dto.is_featured ?? false,
             is_new: dto.is_new ?? false,
@@ -261,6 +276,7 @@ export class ProductsService {
     if (dto.is_featured != null) data.is_featured = dto.is_featured;
     if (dto.is_new != null) data.is_new = dto.is_new;
     if (dto.tags != null) data.tags = dto.tags;
+    if (dto.sort_order != null) data.sort_order = dto.sort_order;
 
     const hasFieldUpdates = Object.keys(data).length > 0;
 

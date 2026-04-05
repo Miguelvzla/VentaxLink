@@ -2,10 +2,12 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -58,6 +60,14 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   stock?: number;
+
+  /** Posición en el catálogo (1 = primero entre no destacados; los destacados siguen arriba). Si no se envía, va al final. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(999_999)
+  sort_order?: number;
 
   @IsOptional()
   @IsBoolean()

@@ -9,6 +9,27 @@ function normalizeApiBase(): string {
 
 const base = normalizeApiBase();
 
+/** Origen de la API sin `/v1` (para armar URLs absolutas de `/v1/uploads/…`). */
+function publicApiOriginForMedia(): string {
+  return base.replace(/\/v1$/i, "");
+}
+
+/**
+ * Convierte rutas guardadas como `/v1/uploads/…` en URL absoluta para `<img>` / `next/image`.
+ * Las URLs `https://…` externas se devuelven igual.
+ */
+export function resolvePublicMediaUrl(url: string | null | undefined): string {
+  if (url == null) return "";
+  const t = String(url).trim();
+  if (!t) return "";
+  if (/^https?:\/\//i.test(t)) return t;
+  if (t.startsWith("//")) return `https:${t}`;
+  const origin = publicApiOriginForMedia();
+  if (t.startsWith("/v1/uploads/")) return `${origin}${t}`;
+  if (t.startsWith("v1/uploads/")) return `${origin}/${t}`;
+  return t;
+}
+
 export type AuthResponse = {
   access_token: string;
   tenant: {
@@ -34,6 +55,8 @@ export type AdminProduct = {
   price: string;
   compare_price: string | null;
   stock: number;
+  /** Orden en catálogo (menor = más arriba; los destacados siguen primero). */
+  sort_order: number;
   is_active: boolean;
   is_featured: boolean;
   is_new: boolean;
@@ -83,16 +106,46 @@ export type AdminCustomer = {
   created_at: string;
 };
 
+export type AnalyticsTopProductView = {
+  product_slug: string;
+  views: number;
+  name: string | null;
+  product_id: string | null;
+  image_url: string | null;
+};
+
+export type AnalyticsDailyPoint = {
+  date: string;
+  visits: number;
+  orders: number;
+};
+
+export type AnalyticsTopSold = {
+  product_id: string;
+  name: string;
+  slug: string;
+  image_url: string | null;
+  quantity_sold: number;
+};
+
 export type AnalyticsSummary = {
   productCount: number;
+  activeProductCount: number;
   orderCount: number;
   customerCount: number;
   ordersInRange: number;
   rangeDays: number;
-  /** Ranking de vistas de producto: solo planes Pro y Mayorista. */
   topProductViewsEnabled: boolean;
+  /** Pro / Mayorista: UI avanzada, gráficos y más vendidos. */
+  dashboardPro: boolean;
+  /** Suma stock × precio (ARS); null en plan Inicio. */
+  storeValuationArs: string | null;
+  /** Visitas a la tienda (evento tienda_vista) en el rango del plan. */
+  visitCountInRange: number;
   eventsInRange: { event: string; count: number }[];
-  topProductViews: { product_slug: string; views: number }[];
+  topProductViews: AnalyticsTopProductView[];
+  dailyVisitsVsOrders: AnalyticsDailyPoint[];
+  topSoldProducts: AnalyticsTopSold[];
 };
 
 export type AnalyticsDashboardToday = {
