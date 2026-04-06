@@ -18,6 +18,7 @@ import { HttpAdapterHost } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { PrismaClientExceptionFilter } from './prisma/prisma-client-exception.filter';
 import { MulterExceptionFilter } from './uploads/multer-exception.filter';
+import { createUploadsStaticMiddleware } from './uploads/uploads-static.middleware';
 import { resolveUploadsRoot } from './uploads/uploads-path';
 
 const uploadsRoot = resolveUploadsRoot();
@@ -174,8 +175,8 @@ async function bootstrap() {
     next();
   });
 
-  app.use('/v1/uploads', express.static(uploadsRoot));
   app.setGlobalPrefix('v1');
+  app.use('/v1/uploads', createUploadsStaticMiddleware(uploadsRoot));
   const httpAdapterHost = app.get(HttpAdapterHost);
   app.useGlobalFilters(
     new MulterExceptionFilter(),
