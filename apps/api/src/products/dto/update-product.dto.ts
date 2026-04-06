@@ -101,8 +101,9 @@ export class UpdateProductDto {
   @ValidateIf((_, v) => v !== null && v !== undefined && String(v).trim() !== '')
   @IsString()
   @MaxLength(2048)
-  @Matches(/^https?:\/\/.+/i, {
-    message: 'Tiene que ser un link que empiece con http o https',
+  @Matches(/^https?:\/\/.+|^\/v1\/uploads\/.+/i, {
+    message:
+      'Usá un link http(s) o una ruta de archivo subido que empiece con /v1/uploads/',
   })
   image_url?: string | null;
 

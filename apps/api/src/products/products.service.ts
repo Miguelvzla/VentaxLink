@@ -97,6 +97,18 @@ export class ProductsService {
     };
   }
 
+  private assertAllowedProductImageUrls(urls: string[]) {
+    for (const u of urls) {
+      const t = u.trim();
+      if (!t) continue;
+      if (!/^https?:\/\//i.test(t) && !/^\/v1\/uploads\//i.test(t)) {
+        throw new BadRequestException(
+          'Cada imagen tiene que ser un link http(s) o una ruta /v1/uploads/…',
+        );
+      }
+    }
+  }
+
   private normalizeProductImageUrls(
     dto: { image_url?: string; image_urls?: string[] },
     max: number,
@@ -109,7 +121,9 @@ export class ProductsService {
     } else if (dto.image_url?.trim()) {
       urls = [dto.image_url.trim()];
     }
-    return urls.slice(0, max);
+    const out = urls.slice(0, max);
+    this.assertAllowedProductImageUrls(out);
+    return out;
   }
 
   private async loadAdminProduct(
@@ -303,6 +317,7 @@ export class ProductsService {
               ? [dto.image_url.trim()]
               : []
             : [];
+      this.assertAllowedProductImageUrls(urls);
       await this.prisma.productImage.deleteMany({ where: { product_id: id } });
       let sort = 0;
       for (const url of urls) {

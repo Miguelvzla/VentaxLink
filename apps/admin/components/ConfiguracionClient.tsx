@@ -291,17 +291,23 @@ export function ConfiguracionClient() {
               </div>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-[#374151]">Logo (URL o archivo)</label>
+              <label className="mb-1 block text-sm font-medium text-[#374151]">
+                Logo (link público o archivo desde tu galería)
+              </label>
               <input
-                type="url"
+                type="text"
+                inputMode="url"
+                autoComplete="off"
                 value={form.logo_url}
                 onChange={(e) => setForm((f) => (f ? { ...f, logo_url: e.target.value } : f))}
+                placeholder="https://… o subí abajo"
                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
               />
               <input
                 ref={logoFileRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/*"
+                aria-label="Subir logo desde archivo o galería"
                 className="sr-only"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
@@ -325,21 +331,27 @@ export function ConfiguracionClient() {
                 onClick={() => logoFileRef.current?.click()}
                 className="mt-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-[#374151] hover:bg-gray-50 disabled:opacity-50"
               >
-                {logoUploading ? "Subiendo…" : "Subir Logo"}
+                {logoUploading ? "Subiendo…" : "Subir logo (galería o archivos)"}
               </button>
             </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-sm font-medium text-[#374151]">Banner (URL o archivo)</label>
+              <label className="mb-1 block text-sm font-medium text-[#374151]">
+                Banner (link público o archivo desde tu galería)
+              </label>
               <input
-                type="url"
+                type="text"
+                inputMode="url"
+                autoComplete="off"
                 value={form.banner_url}
                 onChange={(e) => setForm((f) => (f ? { ...f, banner_url: e.target.value } : f))}
+                placeholder="https://… o subí abajo"
                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
               />
               <input
                 ref={bannerFileRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/*"
+                aria-label="Subir banner desde archivo o galería"
                 className="sr-only"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
@@ -363,8 +375,11 @@ export function ConfiguracionClient() {
                 onClick={() => bannerFileRef.current?.click()}
                 className="mt-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-[#374151] hover:bg-gray-50 disabled:opacity-50"
               >
-                {bannerUploading ? "Subiendo…" : "Subir Banner"}
+                {bannerUploading ? "Subiendo…" : "Subir banner (galería o archivos)"}
               </button>
+              <p className="mt-2 text-xs text-[#6B7280]">
+                Tras subir, pulsá <strong>Guardar cambios</strong>. Para que los archivos no se borren al redesplegar el servidor, usá volumen persistente y <code className="rounded bg-gray-100 px-1">UPLOADS_DIR</code> en la API.
+              </p>
             </div>
           </section>
 

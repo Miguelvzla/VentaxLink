@@ -90,7 +90,7 @@ export class CreateProductDto {
   })
   tags?: string[];
 
-  /** Foto principal: pegá un link público (https…). Subir archivo desde la PC viene después. */
+  /** Foto principal: link https o ruta guardada por la API (/v1/uploads/…). */
   @IsOptional()
   @Transform(({ value }) => {
     if (value === '' || value == null) return undefined;
@@ -100,8 +100,9 @@ export class CreateProductDto {
   @IsString()
   @MaxLength(2048)
   @ValidateIf((_, v) => typeof v === 'string' && v.length > 0)
-  @Matches(/^https?:\/\/.+/i, {
-    message: 'Tiene que ser un link que empiece con http o https',
+  @Matches(/^https?:\/\/.+|^\/v1\/uploads\/.+/i, {
+    message:
+      'Usá un link http(s) o una ruta de archivo subido que empiece con /v1/uploads/',
   })
   image_url?: string;
 

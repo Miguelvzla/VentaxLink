@@ -437,7 +437,9 @@ export function ProductosClient() {
                     {idx === 0 ? " — principal" : ""}
                   </label>
                   <input
-                    type="url"
+                    type="text"
+                    inputMode="url"
+                    autoComplete="off"
                     value={form.image_urls[idx]}
                     onChange={(e) =>
                       setForm((f) => {
@@ -450,13 +452,14 @@ export function ProductosClient() {
                         return { ...f, image_urls: next };
                       })
                     }
-                    placeholder="https://… o subí un archivo"
+                    placeholder="Pegá un link https://… o subí una imagen abajo"
                     className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#22C55E] focus:ring-2"
                   />
                   <input
                     ref={fileRefs[idx]}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    accept="image/*"
+                    aria-label={`Elegir imagen para la foto ${idx + 1}`}
                     className="sr-only"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
@@ -489,16 +492,17 @@ export function ProductosClient() {
                       onClick={() => fileRefs[idx].current?.click()}
                       className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-[#374151] hover:bg-gray-50 disabled:opacity-50"
                     >
-                      {uploadingSlot === idx ? "Subiendo…" : "Subir Foto"}
+                      {uploadingSlot === idx ? "Subiendo…" : "Subir desde galería o archivos"}
                     </button>
                     {form.image_urls[idx] ? (
-                      <span className="text-xs text-[#9CA3AF]">Se guarda al pulsar Guardar</span>
+                      <span className="text-xs text-[#9CA3AF]">Pulsá Guardar abajo para persistir el producto y la foto</span>
                     ) : null}
                   </div>
                 </div>
               ))}
-              <p className="text-xs text-[#9CA3AF]">
-                JPG, PNG, WEBP o GIF hasta 5&nbsp;MB por archivo. También podés pegar un link público directo.
+              <p className="text-xs text-[#6B7280]">
+                Podés usar un <strong>link público</strong> (https) o <strong>subir un archivo</strong>; la ruta interna (/v1/uploads/…) es válida. JPG, PNG, WEBP o GIF hasta 5&nbsp;MB. En el servidor de producción, un{" "}
+                <strong>volumen persistente</strong> y la variable <code className="rounded bg-gray-100 px-1">UPLOADS_DIR</code> en la API evitan que se pierdan las fotos al redesplegar.
               </p>
             </div>
             <div className="sm:col-span-2">
