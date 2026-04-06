@@ -1,19 +1,15 @@
 import { ProductCard } from "@/components/ProductCard";
 import { StoreCatalogSearch } from "@/components/StoreCatalogSearch";
 import { estimateProductPoints, fetchProducts, fetchTenant } from "@/lib/api";
+import { buildCatalogHref } from "@/lib/catalog-href";
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string; q?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; featured?: string; new_only?: string }>;
 };
 
-function buildPageHref(slug: string, pageNum: number, q?: string) {
-  const p = new URLSearchParams();
-  if (pageNum > 1) p.set("page", String(pageNum));
-  const qs = q?.trim();
-  if (qs) p.set("q", qs.slice(0, 120));
-  const s = p.toString();
-  return s ? `/tienda/${slug}/productos?${s}` : `/tienda/${slug}/productos`;
+function truthyParam(v: string | undefined): boolean {
+  return v === "1" || v?.toLowerCase() === "true";
 }
 
 export default async function ProductosPage({ params, searchParams }: Props) {
@@ -21,14 +17,21 @@ export default async function ProductosPage({ params, searchParams }: Props) {
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
   const qRaw = typeof sp.q === "string" ? sp.q : "";
+  const featuredOnly = truthyParam(sp.featured);
+  const newOnly = truthyParam(sp.new_only);
   const [tenant, catalog] = await Promise.all([
     fetchTenant(slug),
-    fetchProducts(slug, page, 24, qRaw || null),
+    fetchProducts(slug, page, 24, qRaw || null, {
+      featuredOnly,
+      newOnly,
+    }),
   ]);
 
   if (!tenant || !catalog) return null;
 
   const { meta } = catalog;
+  const hrefOpts = { q: qRaw, featured: featuredOnly, newOnly };
+  const hasCatalogFilter = featuredOnly || newOnly;
   const manyProducts = meta.total > 10;
   const gridCatalog =
     manyProducts
@@ -48,13 +51,60 @@ export default async function ProductosPage({ params, searchParams }: Props) {
               {qRaw.trim().length > 80 ? "…" : ""}»
             </span>
           ) : null}
+          {featuredOnly ? (
+            <span className="text-[#9CA3AF]"> · Solo destacados</span>
+          ) : null}
+          {newOnly ? <span className="text-[#9CA3AF]"> · Solo nuevos</span> : null}
         </span>
-        {qRaw.trim() ? (
-          <a href={`/tienda/${slug}/productos`} className="font-medium hover:underline" style={{ color: tenant.primary_color }}>
-            Quitar filtro
+        {qRaw.trim() || hasCatalogFilter ? (
+          <a
+            href={buildCatalogHref(slug)}
+            className="font-medium hover:underline"
+            style={{ color: tenant.primary_color }}
+          >
+            Quitar filtros
           </a>
         ) : null}
       </p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="w-full text-xs font-medium uppercase tracking-wide text-[#9CA3AF] sm:w-auto sm:py-2">
+          Filtrar
+        </span>
+        <a
+          href={buildCatalogHref(slug, { q: qRaw })}
+          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+            !featuredOnly && !newOnly
+              ? "border-transparent text-white shadow-sm"
+              : "border-gray-200 bg-white text-[#374151] hover:bg-gray-50"
+          }`}
+          style={!featuredOnly && !newOnly ? { backgroundColor: tenant.primary_color } : undefined}
+        >
+          Todos
+        </a>
+        <a
+          href={buildCatalogHref(slug, { q: qRaw, featured: true })}
+          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+            featuredOnly
+              ? "border-transparent text-white shadow-sm"
+              : "border-gray-200 bg-white text-[#374151] hover:bg-gray-50"
+          }`}
+          style={featuredOnly ? { backgroundColor: tenant.primary_color } : undefined}
+        >
+          Destacados
+        </a>
+        <a
+          href={buildCatalogHref(slug, { q: qRaw, newOnly: true })}
+          className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+            newOnly
+              ? "border-transparent text-white shadow-sm"
+              : "border-gray-200 bg-white text-[#374151] hover:bg-gray-50"
+          }`}
+          style={newOnly ? { backgroundColor: tenant.primary_color } : undefined}
+        >
+          Nuevos
+        </a>
+      </div>
 
       <div className="mt-6 rounded-2xl border border-gray-100 bg-[#FAFAFA]/80 p-4 sm:p-5">
         <p className="mb-3 text-sm font-medium text-[#374151]">Buscar productos</p>
@@ -62,6 +112,8 @@ export default async function ProductosPage({ params, searchParams }: Props) {
           slug={slug}
           primaryColor={tenant.primary_color}
           defaultQuery={qRaw}
+          preserveFeatured={featuredOnly}
+          preserveNewOnly={newOnly}
           id="store-catalog-page-search"
         />
       </div>
@@ -88,7 +140,7 @@ export default async function ProductosPage({ params, searchParams }: Props) {
             <nav className="mt-10 flex justify-center gap-4 text-sm">
               {page > 1 ? (
                 <a
-                  href={buildPageHref(slug, page - 1, qRaw)}
+                  href={buildCatalogHref(slug, { ...hrefOpts, page: page - 1 })}
                   className="rounded-xl border border-gray-200 px-4 py-2 font-medium hover:bg-gray-50"
                 >
                   Anterior
@@ -99,7 +151,7 @@ export default async function ProductosPage({ params, searchParams }: Props) {
               </span>
               {page < meta.pages ? (
                 <a
-                  href={buildPageHref(slug, page + 1, qRaw)}
+                  href={buildCatalogHref(slug, { ...hrefOpts, page: page + 1 })}
                   className="rounded-xl border border-gray-200 px-4 py-2 font-medium hover:bg-gray-50"
                 >
                   Siguiente

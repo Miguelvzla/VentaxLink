@@ -6,6 +6,9 @@ type Props = {
   primaryColor: string;
   /** Valor inicial (página catálogo con ?q=) */
   defaultQuery?: string;
+  /** Mantener filtros al enviar búsqueda (GET) */
+  preserveFeatured?: boolean;
+  preserveNewOnly?: boolean;
   /** id del form para asociar label en accesibilidad */
   id?: string;
 };
@@ -13,11 +16,20 @@ type Props = {
 /**
  * Búsqueda GET hacia /tienda/[slug]/productos?q=… (funciona sin JS).
  */
-export function StoreCatalogSearch({ slug, primaryColor, defaultQuery = "", id = "store-catalog-search" }: Props) {
+export function StoreCatalogSearch({
+  slug,
+  primaryColor,
+  defaultQuery = "",
+  preserveFeatured = false,
+  preserveNewOnly = false,
+  id = "store-catalog-search",
+}: Props) {
   const action = `/tienda/${slug}/productos`;
 
   return (
     <form action={action} method="get" className="flex w-full max-w-xl gap-2">
+      {preserveFeatured ? <input type="hidden" name="featured" value="1" /> : null}
+      {preserveNewOnly ? <input type="hidden" name="new_only" value="1" /> : null}
       <label htmlFor={id} className="sr-only">
         Buscar productos
       </label>
