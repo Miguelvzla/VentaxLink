@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown, ChevronUp } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -128,6 +129,8 @@ export function ProductosClient() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
+  /** Guardando posición desde la tabla (fila o intercambio). */
+  const [sortBusy, setSortBusy] = useState(false);
   const [plan, setPlan] = useState<string | null>(null);
   /** Evita usar STARTER (1 sola imagen) hasta que llegue /tenant/me: el login ya guarda plan en localStorage. */
   const effectivePlan = plan ?? tenant?.plan ?? "STARTER";
@@ -251,6 +254,55 @@ export function ProductosClient() {
       setError(err instanceof Error ? err.message : "No se pudo guardar");
     } finally {
       setSaving(false);
+    }
+  }
+
+  const canSwapWithNeighbor = useCallback((index: number, dir: "up" | "down") => {
+    const j = dir === "up" ? index - 1 : index + 1;
+    if (j < 0 || j >= items.length) return false;
+    return items[index].is_featured === items[j].is_featured;
+  }, [items]);
+
+  async function applySortFromList(p: AdminProduct, raw: string) {
+    if (!token) return;
+    const n = Number.parseInt(String(raw).trim(), 10);
+    if (Number.isNaN(n) || n < 1) {
+      setError("La posición tiene que ser un número mayor o igual a 1.");
+      await load();
+      return;
+    }
+    if (n === p.sort_order) return;
+    setSortBusy(true);
+    setError(null);
+    try {
+      await patchJson<{ data: AdminProduct }>(`/products/${p.id}`, token, { sort_order: n });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo actualizar la posición");
+      await load();
+    } finally {
+      setSortBusy(false);
+    }
+  }
+
+  /** Una sola petición: el servidor reubica y renumera 1…n en el grupo (sin duplicados). */
+  async function swapSortWithNeighbor(index: number, dir: "up" | "down") {
+    if (!token || sortBusy) return;
+    if (!canSwapWithNeighbor(index, dir)) return;
+    const p = items[index];
+    const targetPos = dir === "up" ? index : index + 2;
+    setSortBusy(true);
+    setError(null);
+    try {
+      await patchJson<{ data: AdminProduct }>(`/products/${p.id}`, token, {
+        sort_order: targetPos,
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo reordenar");
+      await load();
+    } finally {
+      setSortBusy(false);
     }
   }
 
@@ -401,7 +453,8 @@ export function ProductosClient() {
                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[#374151] outline-none ring-[#22C55E] focus:ring-2"
               />
               <p className="mt-1 text-xs text-[#6B7280]">
-                1 = aparece primero (después de los productos destacados). Números más altos, más abajo.
+                1 = aparece primero dentro de su grupo (los destacados van antes que el resto). Si elegís una
+                posición ya usada, los demás se reordenan solos (2, 3, 4…).
                 {form.id ? "" : " Si lo dejás vacío al crear, se asigna solo al final."}
               </p>
             </div>
@@ -581,11 +634,18 @@ export function ProductosClient() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
+            <p className="border-b border-gray-100 bg-[#FAFAFA] px-4 py-2.5 text-xs text-[#6B7280]">
+              <strong className="text-[#374151]">Orden en la tienda:</strong> primero los{" "}
+              <span className="font-medium text-[#111827]">destacados</span>, luego el resto. Dentro de cada
+              grupo, el número más chico queda más arriba. Si ponés un producto en una posición que ya ocupaba
+              otro, el resto se corre automáticamente (2, 3, 4…). Podés usar flechas o el número sin abrir
+              Editar.
+            </p>
+            <table className="w-full min-w-[800px] text-left text-sm">
               <thead className="border-b border-gray-100 bg-[#FAFAFA] text-xs font-semibold uppercase tracking-wide text-[#6B7280]">
                 <tr>
                   <th className="px-4 py-3 w-14">Foto</th>
-                  <th className="px-3 py-3 w-16 text-center">N.º</th>
+                  <th className="px-2 py-3 w-[7.5rem] text-center">Posición</th>
                   <th className="px-4 py-3">Producto</th>
                   <th className="px-4 py-3">Precio</th>
                   <th className="px-4 py-3">Stock</th>
@@ -594,7 +654,7 @@ export function ProductosClient() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {items.map((p) => (
+                {items.map((p, rowIndex) => (
                   <tr key={p.id} className="text-[#374151]">
                     <td className="px-4 py-3 align-middle">
                       {p.primary_image_url ? (
@@ -612,8 +672,46 @@ export function ProductosClient() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-center tabular-nums text-[#6B7280]">
-                      {p.sort_order ?? "—"}
+                    <td className="px-2 py-3 align-middle">
+                      <div className="flex flex-col items-center gap-1.5">
+                        <div className="flex items-center justify-center gap-0.5">
+                          <button
+                            type="button"
+                            disabled={sortBusy || !canSwapWithNeighbor(rowIndex, "up")}
+                            onClick={() => swapSortWithNeighbor(rowIndex, "up")}
+                            className="rounded-md p-1 text-[#6B7280] hover:bg-gray-100 hover:text-[#111827] disabled:cursor-not-allowed disabled:opacity-30"
+                            aria-label="Subir una posición"
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={sortBusy || !canSwapWithNeighbor(rowIndex, "down")}
+                            onClick={() => swapSortWithNeighbor(rowIndex, "down")}
+                            className="rounded-md p-1 text-[#6B7280] hover:bg-gray-100 hover:text-[#111827] disabled:cursor-not-allowed disabled:opacity-30"
+                            aria-label="Bajar una posición"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <input
+                          type="number"
+                          min={1}
+                          disabled={sortBusy}
+                          defaultValue={p.sort_order}
+                          key={`${p.id}-${p.sort_order}-${p.updated_at}`}
+                          onBlur={(e) => void applySortFromList(p, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              (e.target as HTMLInputElement).blur();
+                            }
+                          }}
+                          className="w-full max-w-[4.25rem] rounded-lg border border-gray-200 px-1 py-1 text-center text-sm tabular-nums text-[#374151] outline-none ring-[#22C55E] focus:ring-2 disabled:opacity-50"
+                          title="Posición (menor = más arriba en su grupo)"
+                          aria-label={`Posición de ${p.name}`}
+                        />
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-[#111827]">{p.name}</p>

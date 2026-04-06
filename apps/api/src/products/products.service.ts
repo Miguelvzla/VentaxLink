@@ -109,6 +109,59 @@ export class ProductsService {
     }
   }
 
+  /**
+   * Coloca el producto en la posición 1-based dentro de su grupo (destacados / no destacados)
+   * y reasigna sort_order 1..n al resto para evitar duplicados y cerrar huecos.
+   */
+  private async reorderProductToPosition(
+    tenantId: string,
+    productId: string,
+    targetPosition1Based: number,
+    finalFeatured: boolean,
+  ): Promise<void> {
+    const existing = await this.prisma.product.findFirst({
+      where: { id: productId, tenant_id: tenantId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Producto no encontrado');
+    }
+    const n = Math.floor(Number(targetPosition1Based));
+    if (!Number.isFinite(n) || n < 1) {
+      throw new BadRequestException(
+        'La posición tiene que ser un número entero ≥ 1',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (existing.is_featured !== finalFeatured) {
+        await tx.product.update({
+          where: { id: productId },
+          data: { is_featured: finalFeatured },
+        });
+      }
+
+      const group = await tx.product.findMany({
+        where: { tenant_id: tenantId, is_featured: finalFeatured },
+        orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+        select: { id: true },
+      });
+      const ids = group.map((g) => g.id);
+      const without = ids.filter((i) => i !== productId);
+      const insertAt = Math.min(Math.max(n - 1, 0), without.length);
+      const newOrder = [
+        ...without.slice(0, insertAt),
+        productId,
+        ...without.slice(insertAt),
+      ];
+      for (let i = 0; i < newOrder.length; i++) {
+        await tx.product.update({
+          where: { id: newOrder[i] },
+          data: { sort_order: i + 1 },
+        });
+      }
+    });
+  }
+
   private normalizeProductImageUrls(
     dto: { image_url?: string; image_urls?: string[] },
     max: number,
@@ -275,6 +328,10 @@ export class ProductsService {
       }
     }
 
+    const hasReorder = dto.sort_order != null;
+    const finalFeatured =
+      dto.is_featured !== undefined ? dto.is_featured : existing.is_featured;
+
     const data: Prisma.ProductUpdateInput = {};
     if (dto.name != null) data.name = dto.name;
     if (slug != null) data.slug = slug;
@@ -287,14 +344,13 @@ export class ProductsService {
     }
     if (dto.stock != null) data.stock = dto.stock;
     if (dto.is_active != null) data.is_active = dto.is_active;
-    if (dto.is_featured != null) data.is_featured = dto.is_featured;
+    if (!hasReorder && dto.is_featured != null) data.is_featured = dto.is_featured;
     if (dto.is_new != null) data.is_new = dto.is_new;
     if (dto.tags != null) data.tags = dto.tags;
-    if (dto.sort_order != null) data.sort_order = dto.sort_order;
 
     const hasFieldUpdates = Object.keys(data).length > 0;
 
-    if (!hasFieldUpdates && !hasImageUpdate) {
+    if (!hasFieldUpdates && !hasImageUpdate && !hasReorder) {
       const p = await this.loadAdminProduct(tenantId, id);
       if (!p) throw new NotFoundException('Producto no encontrado');
       return { data: this.serializeAdminProduct(p) };
@@ -331,6 +387,15 @@ export class ProductsService {
           },
         });
       }
+    }
+
+    if (hasReorder) {
+      await this.reorderProductToPosition(
+        tenantId,
+        id,
+        dto.sort_order!,
+        finalFeatured,
+      );
     }
 
     const full = await this.loadAdminProduct(tenantId, id);
