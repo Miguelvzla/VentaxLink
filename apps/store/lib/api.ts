@@ -157,7 +157,8 @@ export async function fetchProducts(
   let res: Response;
   try {
     res = await fetch(`${apiBase()}/store/${slug}/products?${q}`, {
-      next: { revalidate: 30 },
+      /* Orden del catálogo (sort_order) se edita en el panel; no cachear o la tienda queda desfasada. */
+      cache: "no-store",
     });
   } catch (e) {
     rethrowIfApiUnreachable(e);
