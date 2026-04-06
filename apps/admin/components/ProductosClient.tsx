@@ -33,7 +33,6 @@ type FormState = {
   /** Posición en catálogo (1 = primero); vacío en producto nuevo = al final automático */
   sort_order: string;
   image_urls: [string, string, string];
-  is_active: boolean;
   is_featured: boolean;
   is_new: boolean;
   tags: string;
@@ -78,7 +77,6 @@ const emptyForm = (): FormState => ({
   stock: "0",
   sort_order: "",
   image_urls: ["", "", ""],
-  is_active: true,
   is_featured: false,
   is_new: false,
   tags: "",
@@ -103,7 +101,6 @@ function productToForm(p: AdminProduct): FormState {
     stock: String(p.stock),
     sort_order: String(p.sort_order ?? 0),
     image_urls,
-    is_active: p.is_active,
     is_featured: p.is_featured,
     is_new: p.is_new,
     tags: p.tags?.length ? p.tags.join(", ") : "",
@@ -224,7 +221,6 @@ export function ProductosClient() {
         name: form.name.trim(),
         price,
         stock,
-        is_active: form.is_active,
         is_featured: form.is_featured,
         is_new: form.is_new,
         short_desc: form.short_desc.trim() || undefined,
@@ -306,9 +302,9 @@ export function ProductosClient() {
     }
   }
 
-  async function onDeactivate(id: string, name: string) {
+  async function onDesactivarProducto(id: string, name: string) {
     if (!token) return;
-    if (!window.confirm(`¿Dar de baja "${name}"? No se borra de la base: deja de mostrarse en la tienda.`)) {
+    if (!window.confirm(`¿Desactivar "${name}"? Dejará de mostrarse en la tienda (no se borra).`)) {
       return;
     }
     setError(null);
@@ -316,7 +312,18 @@ export function ProductosClient() {
       await deleteJson(`/products/${id}`, token);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo dar de baja");
+      setError(e instanceof Error ? e.message : "No se pudo desactivar");
+    }
+  }
+
+  async function onReactivarProducto(id: string, name: string) {
+    if (!token) return;
+    setError(null);
+    try {
+      await patchJson<{ data: AdminProduct }>(`/products/${id}`, token, { is_active: true });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo reactivar");
     }
   }
 
@@ -573,14 +580,6 @@ export function ProductosClient() {
               <label className="flex items-center gap-2 text-sm text-[#374151]">
                 <input
                   type="checkbox"
-                  checked={form.is_active}
-                  onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
-                />
-                Visible en la tienda
-              </label>
-              <label className="flex items-center gap-2 text-sm text-[#374151]">
-                <input
-                  type="checkbox"
                   checked={form.is_featured}
                   onChange={(e) => setForm((f) => ({ ...f, is_featured: e.target.checked }))}
                 />
@@ -733,22 +732,32 @@ export function ProductosClient() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(p)}
-                        className="mr-2 text-sm font-medium text-[#2563EB] hover:underline"
-                      >
-                        Editar
-                      </button>
-                      {p.is_active && (
+                      <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
                         <button
                           type="button"
-                          onClick={() => onDeactivate(p.id, p.name)}
-                          className="text-sm font-medium text-red-600 hover:underline"
+                          onClick={() => startEdit(p)}
+                          className="text-sm font-medium text-[#2563EB] hover:underline"
                         >
-                          Dar de baja
+                          Editar
                         </button>
-                      )}
+                        {p.is_active ? (
+                          <button
+                            type="button"
+                            onClick={() => onDesactivarProducto(p.id, p.name)}
+                            className="text-sm font-medium text-red-600 hover:underline"
+                          >
+                            Desactivar
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onReactivarProducto(p.id, p.name)}
+                            className="text-sm font-medium text-emerald-700 hover:underline"
+                          >
+                            Reactivar
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
