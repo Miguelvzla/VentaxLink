@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { StoreFooter } from "@/components/StoreFooter";
 import { FloatingCartBar } from "@/components/FloatingCartBar";
 import { StoreHeader } from "@/components/StoreHeader";
+import { StoreOwnerDashboardLink } from "@/components/StoreOwnerDashboardLink";
 import { StoreVisitTracker } from "@/components/StoreVisitTracker";
 import { fetchTenant } from "@/lib/api";
 import { resolvePublicMediaUrl } from "@/lib/public-media-url";
@@ -83,6 +84,7 @@ export default async function TiendaLayout({
     >
       <StoreVisitTracker slug={slug} />
       <StoreHeader tenant={tenant} slug={slug} />
+      <StoreOwnerDashboardLink slug={slug} primaryColor={tenant.primary_color} />
       {tenant.catalog_limited && tenant.billing_hold_message ? (
         <div className="mx-auto max-w-5xl px-4 pt-4 sm:px-6">
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
