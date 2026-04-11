@@ -57,13 +57,18 @@ function isPathInsideUploadsRoot(root: string, candidate: string): boolean {
   return c === r || c.startsWith(r + sep);
 }
 
-async function tryReadLocalUploadFile(url: string): Promise<Buffer | null> {
-  const origin = getPublicApiOrigin()?.replace(/\/+$/, '');
-  if (!origin) return null;
-  const prefix = `${origin}/v1/uploads/`;
-  if (!url.startsWith(prefix)) return null;
-  const rel = normalize(url.slice(prefix.length)).replace(/^[\\/]+/, '');
+function uploadsRelativeKeyFromUrl(url: string): string | null {
+  const q = url.trim().split('?')[0];
+  const m = q.match(/\/v1\/uploads\/(.+)$/i);
+  if (!m?.[1]) return null;
+  const rel = normalize(m[1]).replace(/^[\\/]+/, '');
   if (!rel || rel.includes('..')) return null;
+  return rel;
+}
+
+async function tryReadLocalUploadFile(url: string): Promise<Buffer | null> {
+  const rel = uploadsRelativeKeyFromUrl(url);
+  if (!rel) return null;
   try {
     const root = pathResolve(resolveUploadsRoot());
     const full = pathResolve(join(root, rel));
@@ -75,12 +80,49 @@ async function tryReadLocalUploadFile(url: string): Promise<Buffer | null> {
   }
 }
 
+/**
+ * Misma instancia Express sirve /v1/uploads sin pasar por Cloudflare.
+ * Evita HTML de challenge cuando la API hace fetch a su propio dominio público.
+ */
+async function tryFetchLoopbackUpload(
+  url: string,
+  timeoutMs: number,
+): Promise<Buffer | null> {
+  if (process.env.OG_SKIP_LOOPBACK_FETCH === '1') return null;
+  const rel = uploadsRelativeKeyFromUrl(url);
+  if (!rel) return null;
+  const port = Number(process.env.PORT) || 3001;
+  const loopUrl = `http://127.0.0.1:${port}/v1/uploads/${rel}`;
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const r = await fetch(loopUrl, {
+      signal: ac.signal,
+      redirect: 'follow',
+      headers: { 'User-Agent': 'VentaXLink-OGCollage-Loopback/1.0' },
+    });
+    if (!r.ok) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length) return null;
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    if (ct.includes('text/html')) return null;
+    return buf;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 export async function fetchImageBuffer(
   url: string,
   timeoutMs = 8000,
 ): Promise<Buffer | null> {
   const local = await tryReadLocalUploadFile(url);
   if (local) return local;
+
+  const loop = await tryFetchLoopbackUpload(url, timeoutMs);
+  if (loop) return loop;
 
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);
@@ -93,6 +135,8 @@ export async function fetchImageBuffer(
     if (!r.ok) return null;
     const buf = Buffer.from(await r.arrayBuffer());
     if (!buf.length) return null;
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    if (ct.includes('text/html')) return null;
     return buf;
   } catch {
     return null;
