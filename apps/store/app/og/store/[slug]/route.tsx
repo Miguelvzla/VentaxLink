@@ -5,21 +5,21 @@ export const dynamic = "force-dynamic";
 
 const OG_W = 1200;
 const OG_H = 630;
-const G = 12; // gutter px
+const G = 12; // gutter
 
-/* Celdas 2×2 con gutter:
-   CW = (1200 - 3*12) / 2 = 582
-   CH = (630  - 3*12) / 2 = 297   */
-const CW = (OG_W - G * 3) / 2; // 582
-const CH = (OG_H - G * 3) / 2; // 297
-const BANNER_H = 58;
+// 2 columnas, 2 filas: cada celda = 582 × 297
+const CW = Math.floor((OG_W - G * 3) / 2); // 582
+const CH = Math.floor((OG_H - G * 3) / 2); // 297
+const BANNER_H = 52;
 
 const SLUG_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,78}$/;
 
 function apiBase(): string {
   const r = process.env.PUBLIC_API_URL?.trim();
   if (r) return r.replace(/\/+$/, "").replace(/\/v1$/i, "") + "/v1";
-  return (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1").replace(/\/+$/, "");
+  return (
+    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1"
+  ).replace(/\/+$/, "");
 }
 
 async function fetchJsonSafe<T>(url: string): Promise<T | null> {
@@ -43,7 +43,9 @@ async function fetchAsDataUri(url: string): Promise<string | null> {
       headers: { "User-Agent": "VentaXLink-OGImage/1.0" },
     });
     if (!res.ok) return null;
-    const ct = (res.headers.get("content-type") || "image/jpeg").split(";")[0].trim();
+    const ct = (res.headers.get("content-type") || "image/jpeg")
+      .split(";")[0]
+      .trim();
     if (ct.startsWith("text/")) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (!buf.length) return null;
@@ -69,7 +71,9 @@ export async function GET(
   type ProductData = { images: Img[] };
 
   const [tenantResp, productsResp] = await Promise.all([
-    fetchJsonSafe<{ data: TenantData }>(`${base}/store/${encodeURIComponent(slug)}`),
+    fetchJsonSafe<{ data: TenantData }>(
+      `${base}/store/${encodeURIComponent(slug)}`,
+    ),
     fetchJsonSafe<{ data: ProductData[] }>(
       `${base}/store/${encodeURIComponent(slug)}/products?limit=8`,
     ),
@@ -86,30 +90,45 @@ export async function GET(
   }
   while (imageUrls.length < 4) imageUrls.push("");
 
+  // Descargar como data URI en paralelo — máx. 4 fotos
   const uris = await Promise.all(
     imageUrls.map((u) => (u ? fetchAsDataUri(u) : Promise.resolve(null))),
   );
 
-  function cell(uri: string | null, key: number) {
-    const base: React.CSSProperties = {
-      width: CW,
-      height: CH,
-      flexShrink: 0,
-    };
-    if (!uri) {
-      return <div key={key} style={{ ...base, backgroundColor: "#d4d4d8" }} />;
-    }
+  /**
+   * Celda 582×297.
+   * Usa <img> con objectFit:"cover" dentro de un wrapper overflow:hidden.
+   * Soportado en Satori (a diferencia de backgroundSize:cover + backgroundPosition juntos).
+   */
+  function Cell({ uri, idx }: { uri: string | null; idx: number }) {
     return (
       <div
-        key={key}
+        key={idx}
         style={{
-          ...base,
-          backgroundImage: `url(${uri})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center center",
-          backgroundRepeat: "no-repeat",
+          display: "flex",
+          width: CW,
+          height: CH,
+          flexShrink: 0,
+          overflow: "hidden",
+          backgroundColor: "#d4d4d8",
         }}
-      />
+      >
+        {uri && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={uri}
+            width={CW}
+            height={CH}
+            alt=""
+            style={{
+              objectFit: "cover",
+              objectPosition: "center",
+              width: CW,
+              height: CH,
+            }}
+          />
+        )}
+      </div>
     );
   }
 
@@ -128,18 +147,22 @@ export async function GET(
         }}
       >
         {/* Fila superior */}
-        <div style={{ display: "flex", flexDirection: "row", gap: G, height: CH }}>
-          {cell(uris[0], 0)}
-          {cell(uris[1], 1)}
+        <div
+          style={{ display: "flex", flexDirection: "row", gap: G, height: CH }}
+        >
+          <Cell uri={uris[0] ?? null} idx={0} />
+          <Cell uri={uris[1] ?? null} idx={1} />
         </div>
 
         {/* Fila inferior */}
-        <div style={{ display: "flex", flexDirection: "row", gap: G, height: CH }}>
-          {cell(uris[2], 2)}
-          {cell(uris[3], 3)}
+        <div
+          style={{ display: "flex", flexDirection: "row", gap: G, height: CH }}
+        >
+          <Cell uri={uris[2] ?? null} idx={2} />
+          <Cell uri={uris[3] ?? null} idx={3} />
         </div>
 
-        {/* Franja inferior con nombre */}
+        {/* Franja con nombre de tienda */}
         <div
           style={{
             position: "absolute",
@@ -156,10 +179,14 @@ export async function GET(
             paddingRight: 28,
           }}
         >
-          <span style={{ color: "#ffffff", fontSize: 30, fontWeight: 700 }}>
+          <span
+            style={{ color: "#ffffff", fontSize: 28, fontWeight: 700 }}
+          >
             {storeName}
           </span>
-          <span style={{ color: primaryColor, fontSize: 20, fontWeight: 600 }}>
+          <span
+            style={{ color: primaryColor, fontSize: 18, fontWeight: 600 }}
+          >
             VentaXLink
           </span>
         </div>
@@ -169,6 +196,9 @@ export async function GET(
   );
 
   const headers = new Headers(resp.headers);
-  headers.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
+  headers.set(
+    "Cache-Control",
+    "public, max-age=3600, stale-while-revalidate=86400",
+  );
   return new Response(resp.body, { status: 200, headers });
 }
