@@ -2,9 +2,31 @@ export function storeApiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 }
 
-/** Origen de la API sin `/v1` (para armar URLs absolutas de OG / uploads). */
+/**
+ * Origen de la API sin `/v1`.
+ * En el servidor (p. ej. generateMetadata, proxy OG) preferí `PUBLIC_API_URL` para no depender
+ * solo del valor de `NEXT_PUBLIC_*` incrustado en el build (si faltaba, og:image quedaba en localhost).
+ */
 export function storeApiOrigin(): string {
+  const fromPublic = process.env.PUBLIC_API_URL?.trim();
+  if (fromPublic) {
+    return fromPublic.replace(/\/+$/, "").replace(/\/v1$/i, "");
+  }
   return storeApiBase().replace(/\/+$/, "").replace(/\/v1$/i, "");
+}
+
+/**
+ * Origen público del storefront (sin `/tienda` final).
+ * Si `NEXT_PUBLIC_STORE_URL` es `https://store…/tienda`, lo normalizamos para canonical y metadataBase.
+ */
+export function storePublicSiteOrigin(): string {
+  const raw = (
+    process.env.NEXT_PUBLIC_STORE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_STORE_ORIGIN?.trim() ||
+    "http://localhost:3003"
+  ).replace(/\/+$/, "");
+  const noTienda = raw.replace(/\/tienda$/i, "").replace(/\/+$/, "");
+  return noTienda || "http://localhost:3003";
 }
 
 const apiBase = storeApiBase;

@@ -7,7 +7,11 @@ export function resolvePublicMediaUrl(url: string | null | undefined): string {
   if (!t) return "";
   if (/^https?:\/\//i.test(t)) return t;
   if (t.startsWith("//")) return `https:${t}`;
-  const raw = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001").trim().replace(/\/+$/, "");
+  const raw = (
+    process.env.PUBLIC_API_URL?.trim() ||
+    process.env.NEXT_PUBLIC_API_URL?.trim() ||
+    "http://localhost:3001"
+  ).replace(/\/+$/, "");
   const origin = raw.replace(/\/v1$/i, "");
   if (t.startsWith("/v1/uploads/")) return `${origin}${t}`;
   if (t.startsWith("v1/uploads/")) return `${origin}/${t}`;

@@ -169,7 +169,9 @@ async function bootstrap() {
       ? mailTestTimeoutMs
       : path.includes('/public/contact')
         ? contactTimeoutMs
-        : requestTimeoutMs;
+        : path.includes('og-collage.png')
+          ? Math.max(requestTimeoutMs, 55_000)
+          : requestTimeoutMs;
     req.setTimeout(ms);
     res.setTimeout(ms);
     next();
@@ -209,7 +211,13 @@ async function bootstrap() {
   );
   const port = Number(process.env.PORT) || 3001;
   const server = await app.listen(port);
-  const serverRequestTimeoutMs = Math.max(requestTimeoutMs, contactTimeoutMs);
+  /** Incluye collage OG (hasta ~55s con descargas de imágenes) y contact/mail-test. */
+  const serverRequestTimeoutMs = Math.max(
+    requestTimeoutMs,
+    contactTimeoutMs,
+    mailTestTimeoutMs,
+    55_000,
+  );
   server.requestTimeout = serverRequestTimeoutMs;
   server.headersTimeout = serverRequestTimeoutMs + 5_000;
   server.keepAliveTimeout = Number(

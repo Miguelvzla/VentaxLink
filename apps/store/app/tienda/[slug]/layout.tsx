@@ -5,7 +5,7 @@ import { FloatingCartBar } from "@/components/FloatingCartBar";
 import { StoreHeader } from "@/components/StoreHeader";
 import { StoreOwnerDashboardLink } from "@/components/StoreOwnerDashboardLink";
 import { StoreVisitTracker } from "@/components/StoreVisitTracker";
-import { fetchTenant, storeApiOrigin } from "@/lib/api";
+import { fetchTenant, storePublicSiteOrigin } from "@/lib/api";
 import { resolvePublicMediaUrl } from "@/lib/public-media-url";
 
 export async function generateMetadata({
@@ -22,16 +22,15 @@ export async function generateMetadata({
   const logo = tenant.logo_url?.trim();
   const logoAbsolute = logo ? resolvePublicMediaUrl(logo) : "";
   const fallbackIcon = "/ventaxlink-logo.png";
-  const base =
-    (process.env.NEXT_PUBLIC_STORE_URL ?? "http://localhost:3003").replace(/\/$/, "") ||
-    "http://localhost:3003";
-  const canonical = `${base}/tienda/${slug}`;
+  const siteOrigin = storePublicSiteOrigin();
+  const canonical = `${siteOrigin}/tienda/${slug}`;
   const desc = tenant.description?.trim() || `Comprá en ${tenant.name}`;
   const ogVersion = tenant.og_preview_version ?? "0";
-  const ogCollageUrl = `${storeApiOrigin()}/v1/store/${encodeURIComponent(slug)}/og-collage.png?v=${encodeURIComponent(ogVersion)}`;
+  /** Mismo host que el link compartido + proxy en runtime (ver `app/og/store/[slug]/route.ts`). */
+  const ogCollageUrl = `${siteOrigin}/og/store/${encodeURIComponent(slug)}?v=${encodeURIComponent(ogVersion)}`;
 
   return {
-    metadataBase: new URL(base),
+    metadataBase: new URL(siteOrigin),
     title: `${tenant.name} · VentaXLink`,
     description: desc,
     openGraph: {
