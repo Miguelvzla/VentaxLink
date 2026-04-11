@@ -105,19 +105,26 @@ async function renderCell(
     .toBuffer();
 }
 
-function watermarkPng(width: number, height: number): Buffer {
-  const svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
-  <text x="${width - 16}" y="${height - 14}" text-anchor="end" font-family="system-ui,-apple-system,sans-serif" font-size="13" fill="rgba(17,24,39,0.14)">VentaXLink</text>
-</svg>`;
-  return Buffer.from(svg);
+/** PNG mínimo si falla el collage (nunca devolver 500 sin cuerpo útil). */
+export async function buildMinimalOgPlaceholderPng(): Promise<Buffer> {
+  return sharp({
+    create: {
+      width: OG_W,
+      height: OG_H,
+      channels: 3,
+      background: BG,
+    },
+  })
+    .png({ compressionLevel: 6 })
+    .toBuffer();
 }
 
 /**
- * Collage 2×2, 1200×630, gutter, fondo neutro, marca de agua opcional.
+ * Collage 2×2, 1200×630, gutter, fondo neutro.
+ * Sin marca SVG: en Linux sin librsvg, `composite` con SVG rompe y la API devolvía 500.
  */
 export async function buildOgCollagePng(
   slotBuffers: [Buffer | null, Buffer | null, Buffer | null, Buffer | null],
-  options?: { watermark?: boolean },
 ): Promise<Buffer> {
   const { cw, ch, positions } = cellLayout();
   const cells = await Promise.all(
@@ -138,14 +145,6 @@ export async function buildOgCollagePng(
     left: pos.left,
     top: pos.top,
   }));
-
-  if (options?.watermark !== false) {
-    composites.push({
-      input: watermarkPng(OG_W, OG_H),
-      left: 0,
-      top: 0,
-    });
-  }
 
   return base.composite(composites).png({ compressionLevel: 9 }).toBuffer();
 }

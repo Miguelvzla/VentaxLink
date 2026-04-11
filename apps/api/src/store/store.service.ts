@@ -15,6 +15,7 @@ import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
 import { CheckoutDto } from './dto/checkout.dto';
 import { TrackEventDto } from './dto/track-event.dto';
 import {
+  buildMinimalOgPlaceholderPng,
   buildOgCollagePng,
   fetchImageBuffer,
   firstUsableProductImageUrl,
@@ -248,16 +249,24 @@ export class StoreService {
     const buffers = await Promise.all(
       fetchUrls.map((u) => (u ? fetchImageBuffer(u) : Promise.resolve(null))),
     );
-    const body = await buildOgCollagePng(
-      [
+    try {
+      const body = await buildOgCollagePng([
         buffers[0] ?? null,
         buffers[1] ?? null,
         buffers[2] ?? null,
         buffers[3] ?? null,
-      ],
-      { watermark: true },
-    );
-    return { body, version: og_preview_version };
+      ]);
+      return { body, version: og_preview_version };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.logger.error(
+        `[og-collage] slug=${slug} falló la composición: ${msg}`,
+        stack,
+      );
+      const body = await buildMinimalOgPlaceholderPng();
+      return { body, version: og_preview_version };
+    }
   }
 
   /**
