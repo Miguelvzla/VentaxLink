@@ -3,11 +3,14 @@ import {
   Controller,
   DefaultValuePipe,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { CheckoutDto } from './dto/checkout.dto';
 import { TrackEventDto } from './dto/track-event.dto';
 import { StoreService } from './store.service';
@@ -35,6 +38,29 @@ export class StoreController {
   @Get(':slug/products/:pSlug')
   product(@Param('slug') slug: string, @Param('pSlug') pSlug: string) {
     return this.store.getProduct(slug, pSlug);
+  }
+
+  @Get(':slug/og-collage.png')
+  async ogCollage(
+    @Param('slug') slug: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    try {
+      const { body, version } = await this.store.getOgCollageForHttp(slug);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader(
+        'Cache-Control',
+        'public, max-age=3600, stale-while-revalidate=86400',
+      );
+      res.setHeader('ETag', `"${version}"`);
+      res.send(body);
+    } catch (e) {
+      if (e instanceof NotFoundException) {
+        res.status(404).end();
+        return;
+      }
+      throw e;
+    }
   }
 
   @Get(':slug/products')

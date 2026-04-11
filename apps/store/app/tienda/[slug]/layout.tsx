@@ -5,7 +5,7 @@ import { FloatingCartBar } from "@/components/FloatingCartBar";
 import { StoreHeader } from "@/components/StoreHeader";
 import { StoreOwnerDashboardLink } from "@/components/StoreOwnerDashboardLink";
 import { StoreVisitTracker } from "@/components/StoreVisitTracker";
-import { fetchTenant } from "@/lib/api";
+import { fetchTenant, storeApiOrigin } from "@/lib/api";
 import { resolvePublicMediaUrl } from "@/lib/public-media-url";
 
 export async function generateMetadata({
@@ -27,7 +27,8 @@ export async function generateMetadata({
     "http://localhost:3003";
   const canonical = `${base}/tienda/${slug}`;
   const desc = tenant.description?.trim() || `Comprá en ${tenant.name}`;
-  const ogImage = logoAbsolute || `${base}${fallbackIcon}`;
+  const ogVersion = tenant.og_preview_version ?? "0";
+  const ogCollageUrl = `${storeApiOrigin()}/v1/store/${encodeURIComponent(slug)}/og-collage.png?v=${encodeURIComponent(ogVersion)}`;
 
   return {
     metadataBase: new URL(base),
@@ -40,13 +41,13 @@ export async function generateMetadata({
       siteName: "VentaXLink",
       locale: "es_AR",
       type: "website",
-      images: [{ url: ogImage, alt: tenant.name }],
+      images: [{ url: ogCollageUrl, width: 1200, height: 630, alt: tenant.name }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${tenant.name} · VentaXLink`,
       description: desc,
-      images: [ogImage],
+      images: [ogCollageUrl],
     },
     icons: logoAbsolute
       ? {

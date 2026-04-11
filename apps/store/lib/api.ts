@@ -2,6 +2,11 @@ export function storeApiBase(): string {
   return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1";
 }
 
+/** Origen de la API sin `/v1` (para armar URLs absolutas de OG / uploads). */
+export function storeApiOrigin(): string {
+  return storeApiBase().replace(/\/+$/, "").replace(/\/v1$/i, "");
+}
+
 const apiBase = storeApiBase;
 
 function rethrowIfApiUnreachable(e: unknown): never {
@@ -46,6 +51,8 @@ export type PublicTenant = {
   catalog_total_products?: number | null;
   billing_hold_message?: string | null;
   billing_payment_alias?: string | null;
+  /** Hash corto para ?v= en og:image (collage); cambia con el top-4 del catálogo. */
+  og_preview_version?: string;
 };
 
 /** Puntos que equivalen al precio del producto (piso), si el programa está activo. */

@@ -14,6 +14,13 @@ import { productDetailViewsAnalyticsForPlan } from '../common/plan-limits';
 import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
 import { CheckoutDto } from './dto/checkout.dto';
 import { TrackEventDto } from './dto/track-event.dto';
+import {
+  buildOgCollagePng,
+  fetchImageBuffer,
+  firstUsableProductImageUrl,
+  hashOgPreviewVersion,
+  resolveAbsoluteUrlForFetch,
+} from './store-og-collage';
 
 const CATALOG_CAP_SUSPENDED = 20;
 
@@ -102,6 +109,71 @@ export class StoreService {
     private readonly orderNotifications: OrderNotificationsService,
   ) {}
 
+  /**
+   * Primeros 4 productos del catálogo (mismo orden que listProducts) con al menos una imagen usable.
+   * Versión OG derivada en memoria (sin columnas nuevas en BD).
+   */
+  private async loadOgSharePreviewForTenant(
+    tenantId: string,
+    status: TenantStatus,
+  ): Promise<{
+    og_preview_version: string;
+    fetchUrls: (string | null)[];
+  }> {
+    const suspended = status === TenantStatus.SUSPENDED;
+    const idIn = suspended
+      ? [...(await this.visibleProductIdsForSuspended(tenantId))]
+      : null;
+
+    const where: Prisma.ProductWhereInput = {
+      tenant_id: tenantId,
+      is_active: true,
+      ...(idIn ? { id: { in: idIn } } : {}),
+    };
+
+    const rows = await this.prisma.product.findMany({
+      where,
+      orderBy: [
+        { is_featured: 'desc' },
+        { sort_order: 'asc' },
+        { created_at: 'desc' },
+      ],
+      take: 200,
+      select: {
+        id: true,
+        updated_at: true,
+        images: {
+          orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }],
+          take: 3,
+          select: { url: true },
+        },
+      },
+    });
+
+    const picked: { id: string; updated_at: Date; url: string }[] = [];
+    for (const r of rows) {
+      const url = firstUsableProductImageUrl(r.images);
+      if (!url) continue;
+      picked.push({ id: r.id, updated_at: r.updated_at, url });
+      if (picked.length === 4) break;
+    }
+
+    const versionInput =
+      picked.length > 0
+        ? picked.map((p) => `${p.id}:${p.updated_at.toISOString()}`).join('|')
+        : `e:${tenantId}:${rows
+            .slice(0, 48)
+            .map((r) => `${r.id}:${r.updated_at.toISOString()}`)
+            .join(';')}`;
+    const og_preview_version = hashOgPreviewVersion(versionInput);
+
+    const fetchUrls: (string | null)[] = [null, null, null, null];
+    for (let i = 0; i < picked.length; i++) {
+      fetchUrls[i] = resolveAbsoluteUrlForFetch(picked[i].url);
+    }
+    return { og_preview_version, fetchUrls };
+  }
+
   private async visibleProductIdsForSuspended(tenantId: string) {
     const rows = await this.prisma.product.findMany({
       where: { tenant_id: tenantId, is_active: true },
@@ -135,11 +207,13 @@ export class StoreService {
       ? (tenant.billing_hold_message?.trim() || DEFAULT_BILLING_HOLD_MSG)
       : null;
     const pe = tenant.points_enabled === true;
+    const og = await this.loadOgSharePreviewForTenant(tenant.id, tenant.status);
     return {
       data: {
         ...tenant,
         logo_url: rewriteStoredUploadsUrl(tenant.logo_url),
         banner_url: rewriteStoredUploadsUrl(tenant.banner_url),
+        og_preview_version: og.og_preview_version,
         catalog_limited: suspended,
         catalog_visible_cap: suspended ? CATALOG_CAP_SUSPENDED : null,
         catalog_total_products: suspended ? totalProducts : null,
@@ -157,6 +231,33 @@ export class StoreService {
         points_redeem_cost: pe ? tenant.points_redeem_cost : null,
       },
     };
+  }
+
+  async getOgCollageForHttp(
+    slug: string,
+  ): Promise<{ body: Buffer; version: string }> {
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { slug, status: { not: 'CANCELLED' } },
+      select: { id: true, status: true },
+    });
+    if (!tenant) {
+      throw new NotFoundException('Tienda no encontrada');
+    }
+    const { og_preview_version, fetchUrls } =
+      await this.loadOgSharePreviewForTenant(tenant.id, tenant.status);
+    const buffers = await Promise.all(
+      fetchUrls.map((u) => (u ? fetchImageBuffer(u) : Promise.resolve(null))),
+    );
+    const body = await buildOgCollagePng(
+      [
+        buffers[0] ?? null,
+        buffers[1] ?? null,
+        buffers[2] ?? null,
+        buffers[3] ?? null,
+      ],
+      { watermark: true },
+    );
+    return { body, version: og_preview_version };
   }
 
   /**
