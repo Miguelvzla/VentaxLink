@@ -5,11 +5,18 @@ export const dynamic = "force-dynamic";
 
 const OG_W = 1200;
 const OG_H = 630;
-const GUTTER = 16;
+const G = 12; // gutter px
+
+/* Celdas 2×2 con gutter:
+   CW = (1200 - 3*12) / 2 = 582
+   CH = (630  - 3*12) / 2 = 297   */
+const CW = (OG_W - G * 3) / 2; // 582
+const CH = (OG_H - G * 3) / 2; // 297
+const BANNER_H = 58;
+
 const SLUG_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,78}$/;
 
 function apiBase(): string {
-  // PUBLIC_API_URL: runtime (Railway). NEXT_PUBLIC_API_URL: baked at build.
   const r = process.env.PUBLIC_API_URL?.trim();
   if (r) return r.replace(/\/+$/, "").replace(/\/v1$/i, "") + "/v1";
   return (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1").replace(/\/+$/, "");
@@ -57,12 +64,15 @@ export async function GET(
 
   const base = apiBase();
 
-  type TenantData = { name: string; description: string | null; primary_color: string };
-  type ProductData = { images: { url: string; is_primary: boolean }[] };
+  type TenantData = { name: string; primary_color: string };
+  type Img = { url: string; is_primary: boolean };
+  type ProductData = { images: Img[] };
 
   const [tenantResp, productsResp] = await Promise.all([
     fetchJsonSafe<{ data: TenantData }>(`${base}/store/${encodeURIComponent(slug)}`),
-    fetchJsonSafe<{ data: ProductData[] }>(`${base}/store/${encodeURIComponent(slug)}/products?limit=8`),
+    fetchJsonSafe<{ data: ProductData[] }>(
+      `${base}/store/${encodeURIComponent(slug)}/products?limit=8`,
+    ),
   ]);
 
   const storeName = tenantResp?.data?.name ?? slug;
@@ -71,101 +81,85 @@ export async function GET(
   const imageUrls: string[] = [];
   for (const p of productsResp?.data ?? []) {
     if (imageUrls.length >= 4) break;
-    const img =
-      p.images?.find((i) => i.is_primary) ?? p.images?.[0];
+    const img = p.images?.find((i) => i.is_primary) ?? p.images?.[0];
     if (img?.url) imageUrls.push(img.url);
   }
   while (imageUrls.length < 4) imageUrls.push("");
 
-  const dataUris = await Promise.all(
+  const uris = await Promise.all(
     imageUrls.map((u) => (u ? fetchAsDataUri(u) : Promise.resolve(null))),
   );
 
-  const cw = Math.floor((OG_W - GUTTER * 3) / 2);
-  const ch = Math.floor((OG_H - GUTTER * 3) / 2);
+  function cell(uri: string | null, key: number) {
+    const base: React.CSSProperties = {
+      width: CW,
+      height: CH,
+      flexShrink: 0,
+    };
+    if (!uri) {
+      return <div key={key} style={{ ...base, backgroundColor: "#d4d4d8" }} />;
+    }
+    return (
+      <div
+        key={key}
+        style={{
+          ...base,
+          backgroundImage: `url(${uri})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
+          backgroundRepeat: "no-repeat",
+        }}
+      />
+    );
+  }
 
-  const positions = [
-    { left: GUTTER,          top: GUTTER },
-    { left: GUTTER * 2 + cw, top: GUTTER },
-    { left: GUTTER,          top: GUTTER * 2 + ch },
-    { left: GUTTER * 2 + cw, top: GUTTER * 2 + ch },
-  ];
-
-  const image = new ImageResponse(
+  const resp = new ImageResponse(
     (
       <div
         style={{
           width: OG_W,
           height: OG_H,
           display: "flex",
-          position: "relative",
+          flexDirection: "column",
           backgroundColor: "#e8e8ea",
-          fontFamily: "system-ui, -apple-system, sans-serif",
+          padding: G,
+          gap: G,
+          position: "relative",
         }}
       >
-        {positions.map((pos, i) =>
-          dataUris[i] ? (
-            <div
-              key={i}
-              style={{
-                position: "absolute",
-                left: pos.left,
-                top: pos.top,
-                width: cw,
-                height: ch,
-                backgroundImage: `url(${dataUris[i]})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            />
-          ) : (
-            <div
-              key={i}
-              style={{
-                position: "absolute",
-                left: pos.left,
-                top: pos.top,
-                width: cw,
-                height: ch,
-                backgroundColor: "#d4d4d8",
-              }}
-            />
-          ),
-        )}
+        {/* Fila superior */}
+        <div style={{ display: "flex", flexDirection: "row", gap: G, height: CH }}>
+          {cell(uris[0], 0)}
+          {cell(uris[1], 1)}
+        </div>
 
-        {/* Franja inferior con nombre de tienda */}
+        {/* Fila inferior */}
+        <div style={{ display: "flex", flexDirection: "row", gap: G, height: CH }}>
+          {cell(uris[2], 2)}
+          {cell(uris[3], 3)}
+        </div>
+
+        {/* Franja inferior con nombre */}
         <div
           style={{
             position: "absolute",
             bottom: 0,
             left: 0,
-            right: 0,
-            height: 64,
-            backgroundColor: "rgba(0,0,0,0.55)",
+            width: OG_W,
+            height: BANNER_H,
+            backgroundColor: "rgba(0,0,0,0.58)",
             display: "flex",
+            flexDirection: "row",
             alignItems: "center",
-            paddingLeft: 32,
-            paddingRight: 32,
             justifyContent: "space-between",
+            paddingLeft: 28,
+            paddingRight: 28,
           }}
         >
-          <span
-            style={{
-              color: "#ffffff",
-              fontSize: 28,
-              fontWeight: 700,
-              letterSpacing: "-0.5px",
-            }}
-          >
+          <span style={{ color: "#ffffff", fontSize: 30, fontWeight: 700 }}>
             {storeName}
           </span>
-          <span
-            style={{
-              color: primaryColor,
-              fontSize: 18,
-              fontWeight: 600,
-            }}
-          >
+          <span style={{ color: primaryColor, fontSize: 20, fontWeight: 600 }}>
             VentaXLink
           </span>
         </div>
@@ -174,8 +168,7 @@ export async function GET(
     { width: OG_W, height: OG_H },
   );
 
-  // Añadir cache headers (ImageResponse no los trae por defecto)
-  const headers = new Headers(image.headers);
+  const headers = new Headers(resp.headers);
   headers.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400");
-  return new Response(image.body, { status: 200, headers });
+  return new Response(resp.body, { status: 200, headers });
 }
