@@ -1,7 +1,10 @@
 import * as crypto from 'crypto';
+import { readFile } from 'fs/promises';
+import { join, normalize, resolve as pathResolve, sep } from 'path';
 import sharp from 'sharp';
 import { getPublicApiOrigin } from '../uploads/public-asset-url';
 import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
+import { resolveUploadsRoot } from '../uploads/uploads-path';
 
 const OG_W = 1200;
 const OG_H = 630;
@@ -43,10 +46,41 @@ export function firstUsableProductImageUrl(
   return null;
 }
 
+/**
+ * Si la URL es de uploads en este mismo host, leemos del disco (evita HTTP a través de Cloudflare
+ * y HTML de desafío que rompe Sharp).
+ */
+function isPathInsideUploadsRoot(root: string, candidate: string): boolean {
+  const r = pathResolve(root);
+  const c = pathResolve(candidate);
+  return c === r || c.startsWith(r + sep);
+}
+
+async function tryReadLocalUploadFile(url: string): Promise<Buffer | null> {
+  const origin = getPublicApiOrigin()?.replace(/\/+$/, '');
+  if (!origin) return null;
+  const prefix = `${origin}/v1/uploads/`;
+  if (!url.startsWith(prefix)) return null;
+  const rel = normalize(url.slice(prefix.length)).replace(/^[\\/]+/, '');
+  if (!rel || rel.includes('..')) return null;
+  try {
+    const root = pathResolve(resolveUploadsRoot());
+    const full = pathResolve(join(root, rel));
+    if (!isPathInsideUploadsRoot(root, full)) return null;
+    const buf = await readFile(full);
+    return buf.length ? buf : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchImageBuffer(
   url: string,
   timeoutMs = 8000,
 ): Promise<Buffer | null> {
+  const local = await tryReadLocalUploadFile(url);
+  if (local) return local;
+
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);
   try {
@@ -88,6 +122,7 @@ async function renderCell(
       return await sharp(buf)
         .rotate()
         .resize(cw, ch, { fit: 'cover', position: 'centre' })
+        .png()
         .toBuffer();
     } catch {
       /* fallthrough placeholder */
@@ -102,20 +137,6 @@ async function renderCell(
     },
   })
     .png()
-    .toBuffer();
-}
-
-/** PNG mínimo si falla el collage (nunca devolver 500 sin cuerpo útil). */
-export async function buildMinimalOgPlaceholderPng(): Promise<Buffer> {
-  return sharp({
-    create: {
-      width: OG_W,
-      height: OG_H,
-      channels: 3,
-      background: BG,
-    },
-  })
-    .png({ compressionLevel: 6 })
     .toBuffer();
 }
 

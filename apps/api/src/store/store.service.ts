@@ -15,13 +15,13 @@ import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
 import { CheckoutDto } from './dto/checkout.dto';
 import { TrackEventDto } from './dto/track-event.dto';
 import {
-  buildMinimalOgPlaceholderPng,
   buildOgCollagePng,
   fetchImageBuffer,
   firstUsableProductImageUrl,
   hashOgPreviewVersion,
   resolveAbsoluteUrlForFetch,
 } from './store-og-collage';
+import { encodeOgFallbackPng } from './store-og-fallback-png';
 
 const CATALOG_CAP_SUSPENDED = 20;
 
@@ -237,35 +237,36 @@ export class StoreService {
   async getOgCollageForHttp(
     slug: string,
   ): Promise<{ body: Buffer; version: string }> {
-    const tenant = await this.prisma.tenant.findFirst({
-      where: { slug, status: { not: 'CANCELLED' } },
-      select: { id: true, status: true },
-    });
-    if (!tenant) {
-      throw new NotFoundException('Tienda no encontrada');
-    }
-    const { og_preview_version, fetchUrls } =
-      await this.loadOgSharePreviewForTenant(tenant.id, tenant.status);
-    const buffers = await Promise.all(
-      fetchUrls.map((u) => (u ? fetchImageBuffer(u) : Promise.resolve(null))),
-    );
+    let version = '0';
     try {
+      const tenant = await this.prisma.tenant.findFirst({
+        where: { slug, status: { not: 'CANCELLED' } },
+        select: { id: true, status: true },
+      });
+      if (!tenant) {
+        throw new NotFoundException('Tienda no encontrada');
+      }
+      const og = await this.loadOgSharePreviewForTenant(tenant.id, tenant.status);
+      version = og.og_preview_version;
+      const buffers = await Promise.all(
+        og.fetchUrls.map((u) => (u ? fetchImageBuffer(u) : Promise.resolve(null))),
+      );
       const body = await buildOgCollagePng([
         buffers[0] ?? null,
         buffers[1] ?? null,
         buffers[2] ?? null,
         buffers[3] ?? null,
       ]);
-      return { body, version: og_preview_version };
+      return { body, version };
     } catch (err) {
+      if (err instanceof NotFoundException) throw err;
       const msg = err instanceof Error ? err.message : String(err);
       const stack = err instanceof Error ? err.stack : undefined;
       this.logger.error(
-        `[og-collage] slug=${slug} falló la composición: ${msg}`,
+        `[og-collage] slug=${slug} — se sirve fallback sin Sharp: ${msg}`,
         stack,
       );
-      const body = await buildMinimalOgPlaceholderPng();
-      return { body, version: og_preview_version };
+      return { body: encodeOgFallbackPng(), version };
     }
   }
 
