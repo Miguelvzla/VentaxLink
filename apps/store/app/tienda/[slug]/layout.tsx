@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { StoreFooter } from "@/components/StoreFooter";
 import { FloatingCartBar } from "@/components/FloatingCartBar";
 import { StoreHeader } from "@/components/StoreHeader";
@@ -28,6 +29,17 @@ export async function generateMetadata({
   const ogVersion = tenant.og_preview_version ?? "0";
   /** Mismo host que el link compartido + proxy en runtime (ver `app/og/store/[slug]/route.ts`). */
   const ogCollageUrl = `${siteOrigin}/og/store/${encodeURIComponent(slug)}?v=${encodeURIComponent(ogVersion)}`;
+
+  // Pre-calentar el caché de la imagen OG en background (sin bloquear la página).
+  // Así cuando WhatsApp/Facebook crawlean el link, la imagen ya está generada y responde
+  // en milisegundos → WhatsApp muestra el banner grande en vez del thumbnail pequeño.
+  after(async () => {
+    try {
+      await fetch(ogCollageUrl, { cache: "force-cache" });
+    } catch {
+      // No crítico — solo precalentamiento
+    }
+  });
 
   return {
     metadataBase: new URL(siteOrigin),

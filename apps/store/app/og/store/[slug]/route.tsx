@@ -1,7 +1,9 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+// Caché de 1 hora por URL (la query ?v= cambia cuando cambian los productos).
+// Esto permite que WhatsApp reciba la imagen instantáneamente en su crawl.
+export const revalidate = 3600;
 
 // Canvas: 1200 × 630 (estándar OG)
 const OG_W = 1200;
