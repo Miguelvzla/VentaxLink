@@ -263,7 +263,7 @@ export class StoreService {
       const msg = err instanceof Error ? err.message : String(err);
       const stack = err instanceof Error ? err.stack : undefined;
       this.logger.error(
-        `[og-collage] slug=${slug} — se sirve fallback sin Sharp: ${msg}`,
+        `[og-collage] slug=${slug} — se sirve fallback gris: ${msg}`,
         stack,
       );
       return { body: encodeOgFallbackPng(), version };

@@ -13,6 +13,7 @@ import {
 import type { Response } from 'express';
 import { CheckoutDto } from './dto/checkout.dto';
 import { TrackEventDto } from './dto/track-event.dto';
+import { OG_EMERGENCY_PNG, encodeOgFallbackPng } from './store-og-fallback-png';
 import { StoreService } from './store.service';
 
 @Controller('store')
@@ -59,7 +60,13 @@ export class StoreController {
         res.status(404).end();
         return;
       }
-      throw e;
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=60');
+      try {
+        res.send(encodeOgFallbackPng());
+      } catch {
+        res.send(OG_EMERGENCY_PNG);
+      }
     }
   }
 
