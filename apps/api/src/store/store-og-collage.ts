@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { readFile } from 'fs/promises';
 import { join, normalize, resolve as pathResolve, sep } from 'path';
-import sharp from 'sharp';
+import { Jimp, JimpMime } from 'jimp';
 import { getPublicApiOrigin } from '../uploads/public-asset-url';
 import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
 import { resolveUploadsRoot } from '../uploads/uploads-path';
@@ -9,8 +9,9 @@ import { resolveUploadsRoot } from '../uploads/uploads-path';
 const OG_W = 1200;
 const OG_H = 630;
 const GUTTER = 12;
-const PLACEHOLDER = { r: 212, g: 212, b: 216 } as const;
-const BG = { r: 232, g: 232, b: 234 } as const;
+/** RGBA para celdas vacías / error */
+const PLACEHOLDER_COLOR = 0xd4d4d8ff;
+const BG_COLOR = 0xe8e8eaff;
 
 export function hashOgPreviewVersion(versionInput: string): string {
   return crypto.createHash('sha256').update(versionInput).digest('hex').slice(0, 16);
@@ -47,8 +48,7 @@ export function firstUsableProductImageUrl(
 }
 
 /**
- * Si la URL es de uploads en este mismo host, leemos del disco (evita HTTP a través de Cloudflare
- * y HTML de desafío que rompe Sharp).
+ * Si la URL es de uploads en este mismo host, leemos del disco (evita HTTP a través de Cloudflare).
  */
 function isPathInsideUploadsRoot(root: string, candidate: string): boolean {
   const r = pathResolve(root);
@@ -112,60 +112,33 @@ function cellLayout(): { cw: number; ch: number; positions: { left: number; top:
   return { cw: Math.floor(cw), ch: Math.floor(ch), positions };
 }
 
-async function renderCell(
-  buf: Buffer | null,
-  cw: number,
-  ch: number,
-): Promise<Buffer> {
-  if (buf) {
-    try {
-      return await sharp(buf)
-        .rotate()
-        .resize(cw, ch, { fit: 'cover', position: 'centre' })
-        .png()
-        .toBuffer();
-    } catch {
-      /* fallthrough placeholder */
-    }
+async function renderCellJimp(buf: Buffer | null, cw: number, ch: number) {
+  if (!buf?.length) {
+    return new Jimp({ width: cw, height: ch, color: PLACEHOLDER_COLOR });
   }
-  return sharp({
-    create: {
-      width: cw,
-      height: ch,
-      channels: 3,
-      background: PLACEHOLDER,
-    },
-  })
-    .png()
-    .toBuffer();
+  try {
+    const img = await Jimp.read(buf);
+    img.cover({ w: cw, h: ch });
+    return img;
+  } catch {
+    return new Jimp({ width: cw, height: ch, color: PLACEHOLDER_COLOR });
+  }
 }
 
 /**
- * Collage 2×2, 1200×630, gutter, fondo neutro.
- * Sin marca SVG: en Linux sin librsvg, `composite` con SVG rompe y la API devolvía 500.
+ * Collage 2×2, 1200×630 (Jimp = JS puro; evita fallos de Sharp/libvips en Railway).
  */
 export async function buildOgCollagePng(
   slotBuffers: [Buffer | null, Buffer | null, Buffer | null, Buffer | null],
 ): Promise<Buffer> {
   const { cw, ch, positions } = cellLayout();
+  const base = new Jimp({ width: OG_W, height: OG_H, color: BG_COLOR });
   const cells = await Promise.all(
-    slotBuffers.map((b) => renderCell(b, cw, ch)),
+    slotBuffers.map((b) => renderCellJimp(b, cw, ch)),
   );
-
-  const base = sharp({
-    create: {
-      width: OG_W,
-      height: OG_H,
-      channels: 3,
-      background: BG,
-    },
-  });
-
-  const composites: sharp.OverlayOptions[] = positions.map((pos, i) => ({
-    input: cells[i],
-    left: pos.left,
-    top: pos.top,
-  }));
-
-  return base.composite(composites).png({ compressionLevel: 9 }).toBuffer();
+  for (let i = 0; i < 4; i++) {
+    base.composite(cells[i], positions[i].left, positions[i].top);
+  }
+  const out = await base.getBuffer(JimpMime.png);
+  return Buffer.isBuffer(out) ? out : Buffer.from(out);
 }
