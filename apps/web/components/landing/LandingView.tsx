@@ -17,6 +17,7 @@ const nav: { href: string; label: string; external?: boolean }[] = [
   { href: "/", label: "Inicio" },
   { href: "#solucion", label: "Solución" },
   { href: "#funciones", label: "Funciones" },
+  { href: "#clientes", label: "Clientes" },
   { href: "#como-funciona", label: "Cómo funciona" },
   { href: "#canales", label: "Canales y operación" },
   { href: "#stack", label: "Tranquilidad" },
@@ -371,7 +372,9 @@ export function LandingView({ recentStores = [] }: { recentStores?: RecentStore[
         </section>
 
         {/* Carrusel de tiendas recientes */}
-        <StoreCarousel stores={recentStores} />
+        <div id="clientes" className="scroll-mt-24">
+          <StoreCarousel stores={recentStores} />
+        </div>
 
         {/* 4 · Para quién / problema */}
         <section id="solucion" className="scroll-mt-24 border-b border-gray-100 py-20 sm:py-24">
