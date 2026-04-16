@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "../BrandLogo";
-import { StoreCarousel } from "./StoreCarousel";
+import { StoreCarousel, type RecentStore } from "./StoreCarousel";
 
 const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3002";
 const adminLoginUrl = `${adminUrl}/login`;
@@ -225,7 +225,7 @@ function ChevronIcon() {
   );
 }
 
-export function LandingView() {
+export function LandingView({ recentStores = [] }: { recentStores?: RecentStore[] }) {
   return (
     <div className="min-h-screen bg-white text-[#374151]">
       {/* 1 · Navegación */}
@@ -371,7 +371,7 @@ export function LandingView() {
         </section>
 
         {/* Carrusel de tiendas recientes */}
-        <StoreCarousel />
+        <StoreCarousel stores={recentStores} />
 
         {/* 4 · Para quién / problema */}
         <section id="solucion" className="scroll-mt-24 border-b border-gray-100 py-20 sm:py-24">

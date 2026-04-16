@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useEffect } from "react";
 
-type RecentStore = {
+export type RecentStore = {
   name: string;
   slug: string;
   logo_url: string | null;
@@ -13,8 +13,6 @@ type RecentStore = {
 const storeOrigin = (process.env.NEXT_PUBLIC_STORE_ORIGIN ?? "http://localhost:3003").replace(/\/+$/, "");
 
 function StoreAvatar({ store }: { store: RecentStore }) {
-  const [imgError, setImgError] = useState(false);
-
   return (
     <a
       href={`${storeOrigin}/tienda/${store.slug}`}
@@ -26,19 +24,17 @@ function StoreAvatar({ store }: { store: RecentStore }) {
       <div
         className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl shadow-md ring-2 ring-white transition-all group-hover:scale-110 group-hover:shadow-lg sm:h-20 sm:w-20"
         style={{
-          background:
-            store.logo_url && !imgError
-              ? undefined
-              : `linear-gradient(135deg, ${store.primary_color}, ${store.secondary_color})`,
+          background: store.logo_url
+            ? undefined
+            : `linear-gradient(135deg, ${store.primary_color}, ${store.secondary_color})`,
         }}
       >
-        {store.logo_url && !imgError ? (
+        {store.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={store.logo_url}
             alt={store.name}
             className="h-full w-full object-contain p-1.5"
-            onError={() => setImgError(true)}
           />
         ) : (
           <span className="text-2xl font-bold text-white sm:text-3xl">
@@ -53,22 +49,10 @@ function StoreAvatar({ store }: { store: RecentStore }) {
   );
 }
 
-export function StoreCarousel() {
-  const [stores, setStores] = useState<RecentStore[]>([]);
-  const [loaded, setLoaded] = useState(false);
+export function StoreCarousel({ stores }: { stores: RecentStore[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
-
-  useEffect(() => {
-    fetch("/api/recent-stores", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((j: { data: RecentStore[] }) => {
-        if (j.data?.length) setStores(j.data);
-        setLoaded(true);
-      })
-      .catch(() => setLoaded(true));
-  }, []);
 
   // Auto-scroll suave e infinito
   useEffect(() => {
@@ -102,7 +86,7 @@ export function StoreCarousel() {
     };
   }, [stores]);
 
-  if (!loaded || stores.length === 0) return null;
+  if (!stores.length) return null;
 
   // Duplicar para efecto infinito
   const doubled = [...stores, ...stores];

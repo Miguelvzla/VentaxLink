@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const apiBase = (
-    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1"
+    process.env.NEXT_PUBLIC_API_URL ??
+    process.env.API_URL ??
+    "https://api.ventaxlink.ar/v1"
   ).replace(/\/+$/, "");
 
   try {
