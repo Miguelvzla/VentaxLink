@@ -160,6 +160,7 @@ export function ProductosClient() {
   const [plan, setPlan] = useState<string | null>(null);
   /** Evita usar STARTER (1 sola imagen) hasta que llegue /tenant/me: el login ya guarda plan en localStorage. */
   const effectivePlan = plan ?? tenant?.plan ?? "STARTER";
+  const formRef = useRef<HTMLDivElement>(null);
   const fileRef0 = useRef<HTMLInputElement>(null);
   const fileRef1 = useRef<HTMLInputElement>(null);
   const fileRef2 = useRef<HTMLInputElement>(null);
@@ -189,16 +190,24 @@ export function ProductosClient() {
     load();
   }, [load]);
 
+  function scrollToForm() {
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  }
+
   function startNew() {
     setForm(emptyForm());
     setShowForm(true);
     setError(null);
+    scrollToForm();
   }
 
   function startEdit(p: AdminProduct) {
     setForm(productToForm(p));
     setShowForm(true);
     setError(null);
+    scrollToForm();
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -526,7 +535,7 @@ export function ProductosClient() {
       )}
 
       {showForm && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div ref={formRef} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm scroll-mt-4">
           <h2 className="font-display text-lg font-semibold text-[#111827]">
             {form.id ? "Editar producto" : "Nuevo producto"}
           </h2>
