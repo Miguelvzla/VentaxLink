@@ -385,12 +385,26 @@ export class StoreService {
     };
   }
 
+  async listCategories(slug: string) {
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { slug, status: { not: 'CANCELLED' } },
+      select: { id: true },
+    });
+    if (!tenant) throw new NotFoundException('Tienda no encontrada');
+    const cats = await this.prisma.category.findMany({
+      where: { tenant_id: tenant.id, is_active: true },
+      orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
+      select: { id: true, name: true, slug: true },
+    });
+    return { data: cats };
+  }
+
   async listProducts(
     slug: string,
     page: number,
     limit: number,
     searchRaw?: string,
-    filters?: { featuredOnly?: boolean; newOnly?: boolean },
+    filters?: { featuredOnly?: boolean; newOnly?: boolean; categorySlug?: string },
   ) {
     const safeLimit = Math.min(Math.max(limit, 1), 100);
     const safePage = Math.max(page, 1);
@@ -420,12 +434,23 @@ export class StoreService {
       ...(searchOr ?? {}),
     };
 
+    // Filtro por categoría (slug)
+    let categoryFilter: Prisma.ProductWhereInput = {};
+    if (filters?.categorySlug) {
+      const cat = await this.prisma.category.findFirst({
+        where: { tenant_id: tenant.id, slug: filters.categorySlug, is_active: true },
+        select: { id: true },
+      });
+      categoryFilter = cat ? { category_id: cat.id } : { id: 'none' };
+    }
+
     const flagWhere: Prisma.ProductWhereInput = {
       ...(filters?.featuredOnly ? { is_featured: true } : {}),
       ...(filters?.newOnly ? { is_new: true } : {}),
+      ...categoryFilter,
     };
     const hasFlags =
-      filters?.featuredOnly === true || filters?.newOnly === true;
+      filters?.featuredOnly === true || filters?.newOnly === true || !!filters?.categorySlug;
 
     let where: Prisma.ProductWhereInput = hasFlags
       ? { AND: [whereBase, flagWhere] }
@@ -458,6 +483,8 @@ export class StoreService {
           is_new: true,
           stock: true,
           track_stock: true,
+          unit: true,
+          category: { select: { id: true, name: true, slug: true } },
           images: {
             orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }],
             take: 3,
@@ -478,6 +505,7 @@ export class StoreService {
         ...p,
         price: p.price.toString(),
         compare_price: p.compare_price?.toString() ?? null,
+        unit: p.unit ?? 'unidad',
         images: p.images.map((im) => ({
           ...im,
           url: rewriteStoredUploadsUrl(im.url) ?? im.url,

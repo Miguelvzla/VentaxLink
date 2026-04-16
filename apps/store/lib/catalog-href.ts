@@ -6,6 +6,7 @@ export function buildCatalogHref(
     q?: string;
     featured?: boolean;
     newOnly?: boolean;
+    category?: string;
   } = {},
 ): string {
   const p = new URLSearchParams();
@@ -14,6 +15,7 @@ export function buildCatalogHref(
   if (qs) p.set("q", qs.slice(0, 120));
   if (opts.featured) p.set("featured", "1");
   if (opts.newOnly) p.set("new_only", "1");
+  if (opts.category) p.set("category", opts.category);
   const s = p.toString();
   return s ? `/tienda/${slug}/productos?${s}` : `/tienda/${slug}/productos`;
 }

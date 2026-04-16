@@ -117,4 +117,14 @@ export class UpdateProductDto {
   })
   @IsString({ each: true })
   image_urls?: string[];
+
+  @IsOptional()
+  @IsString()
+  category_id?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  unit?: string;
 }

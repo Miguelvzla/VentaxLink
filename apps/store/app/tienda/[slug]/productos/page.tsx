@@ -1,11 +1,16 @@
 import { ProductCard } from "@/components/ProductCard";
 import { StoreCatalogSearch } from "@/components/StoreCatalogSearch";
-import { estimateProductPoints, fetchProducts, fetchTenant } from "@/lib/api";
+import {
+  estimateProductPoints,
+  fetchCategories,
+  fetchProducts,
+  fetchTenant,
+} from "@/lib/api";
 import { buildCatalogHref } from "@/lib/catalog-href";
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string; q?: string; featured?: string; new_only?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; featured?: string; new_only?: string; category?: string }>;
 };
 
 function truthyParam(v: string | undefined): boolean {
@@ -19,24 +24,30 @@ export default async function ProductosPage({ params, searchParams }: Props) {
   const qRaw = typeof sp.q === "string" ? sp.q : "";
   const featuredOnly = truthyParam(sp.featured);
   const newOnly = truthyParam(sp.new_only);
-  const [tenant, catalog] = await Promise.all([
+  const categorySlug = typeof sp.category === "string" ? sp.category : "";
+
+  const [tenant, catalog, categories] = await Promise.all([
     fetchTenant(slug),
     fetchProducts(slug, page, 24, qRaw || null, {
       featuredOnly,
       newOnly,
+      category: categorySlug || undefined,
     }),
+    fetchCategories(slug),
   ]);
 
   if (!tenant || !catalog) return null;
 
   const { meta } = catalog;
-  const hrefOpts = { q: qRaw, featured: featuredOnly, newOnly };
-  const hasCatalogFilter = featuredOnly || newOnly;
+  const hrefOpts = { q: qRaw, featured: featuredOnly, newOnly, category: categorySlug || undefined };
+  const hasCatalogFilter = featuredOnly || newOnly || !!categorySlug;
   const manyProducts = meta.total > 10;
   const gridCatalog =
     manyProducts
       ? "grid grid-cols-2 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3"
       : "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3";
+
+  const activeCategory = categories.find((c) => c.slug === categorySlug);
 
   return (
     <div>
@@ -51,10 +62,9 @@ export default async function ProductosPage({ params, searchParams }: Props) {
               {qRaw.trim().length > 80 ? "…" : ""}»
             </span>
           ) : null}
-          {featuredOnly ? (
-            <span className="text-[#9CA3AF]"> · Solo destacados</span>
-          ) : null}
+          {featuredOnly ? <span className="text-[#9CA3AF]"> · Solo destacados</span> : null}
           {newOnly ? <span className="text-[#9CA3AF]"> · Solo nuevos</span> : null}
+          {activeCategory ? <span className="text-[#9CA3AF]"> · {activeCategory.name}</span> : null}
         </span>
         {qRaw.trim() || hasCatalogFilter ? (
           <a
@@ -74,11 +84,11 @@ export default async function ProductosPage({ params, searchParams }: Props) {
         <a
           href={buildCatalogHref(slug, { q: qRaw })}
           className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-            !featuredOnly && !newOnly
+            !featuredOnly && !newOnly && !categorySlug
               ? "border-transparent text-white shadow-sm"
               : "border-gray-200 bg-white text-[#374151] hover:bg-gray-50"
           }`}
-          style={!featuredOnly && !newOnly ? { backgroundColor: tenant.primary_color } : undefined}
+          style={!featuredOnly && !newOnly && !categorySlug ? { backgroundColor: tenant.primary_color } : undefined}
         >
           Todos
         </a>
@@ -104,9 +114,28 @@ export default async function ProductosPage({ params, searchParams }: Props) {
         >
           Nuevos
         </a>
+
+        {/* Filtros de sección/categoría */}
+        {categories.map((cat) => {
+          const active = categorySlug === cat.slug;
+          return (
+            <a
+              key={cat.id}
+              href={buildCatalogHref(slug, { q: qRaw, category: active ? undefined : cat.slug })}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                active
+                  ? "border-transparent text-white shadow-sm"
+                  : "border-gray-200 bg-white text-[#374151] hover:bg-gray-50"
+              }`}
+              style={active ? { backgroundColor: tenant.primary_color } : undefined}
+            >
+              {cat.name}
+            </a>
+          );
+        })}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-gray-100 bg-[#FAFAFA]/80 p-4 sm:p-5">
+      <div className="mt-4 rounded-2xl border border-gray-100 bg-[#FAFAFA]/80 p-4 sm:p-5">
         <p className="mb-3 text-sm font-medium text-[#374151]">Buscar productos</p>
         <StoreCatalogSearch
           slug={slug}

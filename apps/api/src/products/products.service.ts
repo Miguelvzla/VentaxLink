@@ -44,6 +44,9 @@ const productAdminSelect = {
   is_featured: true,
   is_new: true,
   tags: true,
+  unit: true,
+  category_id: true,
+  category: { select: { id: true, name: true, slug: true } },
   created_at: true,
   updated_at: true,
   images: {
@@ -75,6 +78,9 @@ export class ProductsService {
     is_featured: boolean;
     is_new: boolean;
     tags: string[];
+    unit?: string;
+    category_id?: string | null;
+    category?: { id: string; name: string; slug: string } | null;
     created_at: Date;
     updated_at: Date;
   }) {
@@ -82,6 +88,7 @@ export class ProductsService {
       ...p,
       price: p.price.toString(),
       compare_price: p.compare_price?.toString() ?? null,
+      unit: p.unit ?? 'unidad',
     };
   }
 
@@ -261,6 +268,8 @@ export class ProductsService {
             is_featured: dto.is_featured ?? false,
             is_new: dto.is_new ?? false,
             tags: dto.tags ?? [],
+            unit: dto.unit ?? 'unidad',
+            category_id: dto.category_id ?? null,
           },
           select: { id: true },
         });
@@ -347,6 +356,12 @@ export class ProductsService {
     if (!hasReorder && dto.is_featured != null) data.is_featured = dto.is_featured;
     if (dto.is_new != null) data.is_new = dto.is_new;
     if (dto.tags != null) data.tags = dto.tags;
+    if (dto.unit != null) data.unit = dto.unit;
+    if (dto.category_id !== undefined) {
+      data.category = dto.category_id
+        ? { connect: { id: dto.category_id } }
+        : { disconnect: true };
+    }
 
     const hasFieldUpdates = Object.keys(data).length > 0;
 

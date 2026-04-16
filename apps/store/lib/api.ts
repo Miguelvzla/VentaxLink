@@ -87,6 +87,12 @@ export function estimateProductPoints(tenant: PublicTenant, price: string): numb
   return pts > 0 ? pts : null;
 }
 
+export type StoreCategory = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 export type ProductListItem = {
   id: string;
   slug: string;
@@ -98,6 +104,8 @@ export type ProductListItem = {
   is_new: boolean;
   stock: number;
   track_stock: boolean;
+  unit: string;
+  category: StoreCategory | null;
   images: { url: string; alt: string | null; is_primary: boolean }[];
 };
 
@@ -169,7 +177,21 @@ export async function fetchProduct(slug: string, pSlug: string) {
 export type FetchProductsFilters = {
   featuredOnly?: boolean;
   newOnly?: boolean;
+  category?: string;
 };
+
+export async function fetchCategories(slug: string): Promise<StoreCategory[]> {
+  try {
+    const res = await fetch(`${apiBase()}/store/${slug}/categories`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    const json = (await res.json()) as { data: StoreCategory[] };
+    return json.data ?? [];
+  } catch {
+    return [];
+  }
+}
 
 export async function fetchProducts(
   slug: string,
@@ -183,6 +205,7 @@ export async function fetchProducts(
   if (s) q.set("q", s.slice(0, 120));
   if (filters?.featuredOnly) q.set("featured", "1");
   if (filters?.newOnly) q.set("new_only", "1");
+  if (filters?.category) q.set("category", filters.category);
   let res: Response;
   try {
     res = await fetch(`${apiBase()}/store/${slug}/products?${q}`, {

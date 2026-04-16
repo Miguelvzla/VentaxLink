@@ -180,6 +180,8 @@ model Product {
   is_featured   Boolean          @default(false)
   is_new        Boolean          @default(false)
   weight        Float?
+  /// Unidad de medida: 'unidad', 'kg', 'gr', 'lt', 'ml', 'mt', 'cm' …
+  unit          String           @default("unidad")
   sort_order    Int              @default(0)
   meta_title    String?
   meta_desc     String?

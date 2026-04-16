@@ -70,6 +70,11 @@ export class StoreController {
     }
   }
 
+  @Get(':slug/categories')
+  categories(@Param('slug') slug: string) {
+    return this.store.listCategories(slug);
+  }
+
   @Get(':slug/products')
   products(
     @Param('slug') slug: string,
@@ -78,6 +83,7 @@ export class StoreController {
     @Query('q') q?: string,
     @Query('featured') featured?: string,
     @Query('new_only') new_only?: string,
+    @Query('category') category?: string,
   ) {
     const featuredOnly =
       featured === '1' || featured?.toLowerCase() === 'true';
@@ -86,6 +92,7 @@ export class StoreController {
     return this.store.listProducts(slug, page, limit, q, {
       featuredOnly,
       newOnly,
+      categorySlug: category?.trim() || undefined,
     });
   }
 

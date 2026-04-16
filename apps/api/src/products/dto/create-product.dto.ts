@@ -106,6 +106,21 @@ export class CreateProductDto {
   })
   image_url?: string;
 
+  /** ID de la sección/categoría (opcional). */
+  @IsOptional()
+  @IsString()
+  category_id?: string;
+
+  /**
+   * Unidad de medida: 'unidad', 'kg', 'gr', 'lt', 'ml', 'mt', 'cm'.
+   * Por defecto 'unidad'.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  unit?: string;
+
   /** Hasta 3 URLs según plan (Pro/Mayorista); si mandás esto, tiene prioridad sobre image_url. */
   @IsOptional()
   @IsArray()

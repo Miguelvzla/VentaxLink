@@ -46,6 +46,15 @@ export type AuthResponse = {
   };
 };
 
+export type AdminCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  sort_order: number;
+  product_count: number;
+};
+
 export type AdminProduct = {
   id: string;
   slug: string;
@@ -61,6 +70,9 @@ export type AdminProduct = {
   is_featured: boolean;
   is_new: boolean;
   tags: string[];
+  unit: string;
+  category_id: string | null;
+  category: { id: string; name: string; slug: string } | null;
   primary_image_url: string | null;
   image_urls?: string[];
   created_at: string;
@@ -450,4 +462,21 @@ export async function postUploadTenantBanner(token: string, file: File): Promise
       ? "Error al subir banner (500). En Railway: revisá logs de la API, UPLOADS_DIR y GET /v1/health (uploads_writable)."
       : `Error ${r.status}`;
   return readJsonResponse<{ url: string }>(r, fallback, onUnauthorized);
+}
+
+// ── Categorías / secciones ──────────────────────────────────────────────────
+
+export async function getCategories(token: string): Promise<{ data: AdminCategory[] }> {
+  return getJson<{ data: AdminCategory[] }>("/categories", token);
+}
+
+export async function postCategory(
+  token: string,
+  body: { name: string; description?: string },
+): Promise<{ data: AdminCategory }> {
+  return postJson<{ data: AdminCategory }>("/categories", body, token);
+}
+
+export async function deleteCategoryApi(token: string, id: string): Promise<{ ok: boolean }> {
+  return deleteJson(`/categories/${id}`, token);
 }

@@ -5,11 +5,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  type AdminCategory,
   type AdminProduct,
   type TenantMe,
   deleteJson,
+  deleteCategoryApi,
+  getCategories,
   getJson,
   patchJson,
+  postCategory,
   postJson,
   postUploadProductImage,
   resolvePublicMediaUrl,
@@ -20,6 +24,17 @@ const storeOrigin = process.env.NEXT_PUBLIC_STORE_ORIGIN ?? "http://localhost:30
 
 type ListResponse = { data: AdminProduct[] };
 type MeResponse = { data: TenantMe };
+
+const UNIT_OPTIONS = [
+  { value: "unidad", label: "Unidad (ud.)" },
+  { value: "kg", label: "Kilogramo (kg)" },
+  { value: "gr", label: "Gramo (gr)" },
+  { value: "lt", label: "Litro (lt)" },
+  { value: "ml", label: "Mililitro (ml)" },
+  { value: "mt", label: "Metro (mt)" },
+  { value: "cm", label: "Centímetro (cm)" },
+  { value: "lb", label: "Libra (lb)" },
+];
 
 type FormState = {
   id: string | null;
@@ -36,6 +51,8 @@ type FormState = {
   is_featured: boolean;
   is_new: boolean;
   tags: string;
+  unit: string;
+  category_id: string;
 };
 
 function planProductCap(plan: string): number {
@@ -80,6 +97,8 @@ const emptyForm = (): FormState => ({
   is_featured: false,
   is_new: false,
   tags: "",
+  unit: "unidad",
+  category_id: "",
 });
 
 function productToForm(p: AdminProduct): FormState {
@@ -104,6 +123,8 @@ function productToForm(p: AdminProduct): FormState {
     is_featured: p.is_featured,
     is_new: p.is_new,
     tags: p.tags?.length ? p.tags.join(", ") : "",
+    unit: p.unit ?? "unidad",
+    category_id: p.category_id ?? "",
   };
 }
 
@@ -120,12 +141,17 @@ export function ProductosClient() {
   const storeUrl = tenant ? `${storeOrigin}/tienda/${tenant.slug}` : null;
 
   const [items, setItems] = useState<AdminProduct[]>([]);
+  const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
+  // Gestión de secciones
+  const [showCatPanel, setShowCatPanel] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [savingCat, setSavingCat] = useState(false);
   /** Guardando posición desde la tabla (fila o intercambio). */
   const [sortBusy, setSortBusy] = useState(false);
   const [plan, setPlan] = useState<string | null>(null);
@@ -141,12 +167,14 @@ export function ProductosClient() {
     setLoading(true);
     setError(null);
     try {
-      const [res, me] = await Promise.all([
+      const [res, me, cats] = await Promise.all([
         getJson<ListResponse>("/products", token),
         getJson<MeResponse>("/tenant/me", token),
+        getCategories(token),
       ]);
       setItems(res.data);
       setPlan(me.data.plan);
+      setCategories(cats.data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudieron cargar los productos");
     } finally {
@@ -235,6 +263,8 @@ export function ProductosClient() {
       const slug = form.slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
       if (slug) body.slug = slug;
       if (sortOrderNum !== undefined) body.sort_order = sortOrderNum;
+      body.unit = form.unit || "unidad";
+      body.category_id = form.category_id || null;
 
       if (form.id) {
         body.image_urls = urls;
@@ -327,6 +357,31 @@ export function ProductosClient() {
     }
   }
 
+  async function onAddCategory() {
+    if (!token || !newCatName.trim()) return;
+    setSavingCat(true);
+    try {
+      await postCategory(token, { name: newCatName.trim() });
+      setNewCatName("");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo crear la sección");
+    } finally {
+      setSavingCat(false);
+    }
+  }
+
+  async function onDeleteCategory(id: string, name: string) {
+    if (!token) return;
+    if (!window.confirm(`¿Eliminar la sección "${name}"? Los productos quedarán sin sección asignada.`)) return;
+    try {
+      await deleteCategoryApi(token, id);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo eliminar la sección");
+    }
+  }
+
   if (!token) {
     return (
       <p className="text-sm text-[#6B7280]">
@@ -373,6 +428,67 @@ export function ProductosClient() {
           <strong>{planDisplayName(effectivePlan)}</strong>
         </div>
       ) : null}
+
+      {/* ── Panel de secciones ── */}
+      <div className="rounded-2xl border border-gray-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setShowCatPanel((v) => !v)}
+          className="flex w-full items-center justify-between px-5 py-3.5 text-left text-sm font-semibold text-[#374151] hover:bg-gray-50 rounded-2xl"
+        >
+          <span>
+            Secciones del catálogo
+            <span className="ml-2 font-normal text-[#6B7280]">
+              ({categories.length} {categories.length === 1 ? "sección" : "secciones"})
+            </span>
+          </span>
+          <span className="text-[#9CA3AF]">{showCatPanel ? "▲" : "▼"}</span>
+        </button>
+        {showCatPanel && (
+          <div className="border-t border-gray-100 px-5 pb-5 pt-4 space-y-3">
+            <p className="text-xs text-[#6B7280]">
+              Las secciones te permiten agrupar productos (ej. &quot;Ropa&quot;, &quot;Calzado&quot;). Al agregar un producto podés asignarle una sección, y los clientes podrán filtrar por ella.
+            </p>
+            {categories.length === 0 && (
+              <p className="text-sm text-[#9CA3AF] italic">Todavía no hay secciones. Agregá la primera abajo.</p>
+            )}
+            <ul className="divide-y divide-gray-100">
+              {categories.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 py-2">
+                  <div>
+                    <span className="text-sm font-medium text-[#374151]">{c.name}</span>
+                    <span className="ml-2 text-xs text-[#9CA3AF]">{c.product_count} productos</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void onDeleteCategory(c.id, c.name)}
+                    className="text-xs text-red-500 hover:text-red-700"
+                  >
+                    Eliminar
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2 pt-1">
+              <input
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void onAddCategory(); } }}
+                placeholder="Nueva sección (ej. Remeras)"
+                className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm text-[#374151] outline-none ring-[#22C55E] focus:ring-2"
+              />
+              <button
+                type="button"
+                disabled={savingCat || !newCatName.trim()}
+                onClick={() => void onAddCategory()}
+                className="rounded-xl bg-[#22C55E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#15803D] disabled:opacity-50"
+              >
+                {savingCat ? "…" : "Agregar"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {error && (
         <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
@@ -565,6 +681,40 @@ export function ProductosClient() {
                 <strong>volumen persistente</strong> y la variable <code className="rounded bg-gray-100 px-1">UPLOADS_DIR</code> en la API evitan que se pierdan las fotos al redesplegar.
               </p>
             </div>
+            {/* Unidad de medida */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#374151]">Unidad de medida</label>
+              <select
+                value={form.unit}
+                onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[#374151] outline-none ring-[#22C55E] focus:ring-2 bg-white"
+              >
+                {UNIT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Sección */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-[#374151]">Sección</label>
+              <select
+                value={form.category_id}
+                onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-[#374151] outline-none ring-[#22C55E] focus:ring-2 bg-white"
+              >
+                <option value="">Sin sección</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {categories.length === 0 && (
+                <p className="mt-1 text-xs text-[#9CA3AF]">
+                  Creá secciones desde el panel &quot;Secciones del catálogo&quot; de arriba.
+                </p>
+              )}
+            </div>
+
             <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-[#374151]">
                 Etiquetas (separadas por coma)

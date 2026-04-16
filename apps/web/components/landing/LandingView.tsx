@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "../BrandLogo";
+import { StoreCarousel } from "./StoreCarousel";
 
 const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL ?? "http://localhost:3002";
 const adminLoginUrl = `${adminUrl}/login`;
@@ -150,8 +151,8 @@ const plans: Array<{
     blurb: "Más volumen, cupones con vencimiento y métricas de tu tienda.",
     highlight: true,
     ideal: "Negocios con pedidos frecuentes que quieren promos, números y soporte.",
-    priceMain: "$14.999",
-    priceSub: "Pesos argentinos (ARS) · facturación mensual",
+    priceMain: "$0",
+    priceSub: "Gratis por tiempo limitado · precio regular $14.999/mes ARS",
     features: [
       "Todo lo del plan Inicio, con estos límites ampliados:",
       "De 20 a 100 productos en el catálogo",
@@ -161,8 +162,8 @@ const plans: Array<{
       "Métricas de acceso: qué miran más tus clientes en la tienda (visitas y productos más vistos)",
       "Soporte comercial incluido",
     ],
-    cta: { label: "Pasá a Pro", href: registerUrlPro },
-    ctaHint: "Coordinamos la suscripción del plan en ARS y lo activamos en tu cuenta.",
+    cta: { label: "Activar plan Pro gratis", href: registerUrlPro },
+    ctaHint: "Activamos el plan Pro sin cargo por tiempo limitado. Registrate y empezá hoy.",
   },
   {
     name: "Mayorista",
@@ -204,10 +205,10 @@ const faq = [
     q: "¿Puedo ver una demo?",
     a: "Sí. Tocá “Ver tienda demo” o “Tienda demo” y recorré una tienda de ejemplo como si fueras cliente.",
   },
-  {
-    q: "¿Cuánto cuesta cada plan?",
-    a: "El plan Inicio es gratis ($0). El plan Pro está publicado a $14.999 ARS por mes (pesos argentinos). El plan Mayorista es a medida: consultanos y te cotizamos según productos, facturación AFIP y soporte que necesites.",
-  },
+    {
+      q: "¿Cuánto cuesta cada plan?",
+      a: "El plan Inicio es gratis ($0). El plan Pro está disponible sin cargo por tiempo limitado (precio regular $14.999 ARS/mes). El plan Mayorista es a medida: consultanos y te cotizamos según productos, facturación AFIP y soporte que necesites.",
+    },
 ];
 
 function ChevronIcon() {
@@ -369,6 +370,9 @@ export function LandingView() {
           </div>
         </section>
 
+        {/* Carrusel de tiendas recientes */}
+        <StoreCarousel />
+
         {/* 4 · Para quién / problema */}
         <section id="solucion" className="scroll-mt-24 border-b border-gray-100 py-20 sm:py-24">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -510,12 +514,21 @@ export function LandingView() {
                   ) : null}
                   <h3 className="font-display text-xl font-bold text-[#111827]">{p.name}</h3>
                   <div className="mt-4 rounded-xl bg-surface/80 px-4 py-3 ring-1 ring-gray-100">
-                    <p className="flex flex-wrap items-baseline gap-x-1 font-display text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">
-                      <span>{p.priceMain}</span>
-                      {p.name === "Pro" ? (
-                        <span className="text-xl font-semibold text-[#6B7280] sm:text-2xl">/mes</span>
-                      ) : null}
-                    </p>
+                    {p.name === "Pro" ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 uppercase tracking-wide">
+                            Gratis por tiempo limitado
+                          </span>
+                          <span className="text-sm font-medium text-[#9CA3AF] line-through">$14.999/mes</span>
+                        </div>
+                        <p className="mt-2 font-display text-4xl font-bold tracking-tight text-[#111827]">$0</p>
+                      </>
+                    ) : (
+                      <p className="flex flex-wrap items-baseline gap-x-1 font-display text-3xl font-bold tracking-tight text-[#111827] sm:text-4xl">
+                        <span>{p.priceMain}</span>
+                      </p>
+                    )}
                     <p className="mt-1.5 text-xs leading-snug text-[#6B7280]">{p.priceSub}</p>
                   </div>
                   <p className="mt-3 text-sm leading-relaxed text-[#6B7280]">{p.blurb}</p>

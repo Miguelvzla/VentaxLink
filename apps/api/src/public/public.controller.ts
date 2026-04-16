@@ -20,6 +20,17 @@ export class PublicController {
     private readonly prisma: PrismaService,
   ) {}
 
+  @Get('recent-stores')
+  async recentStores() {
+    const rows = await this.prisma.tenant.findMany({
+      where: { status: { in: ['ACTIVE', 'TRIAL'] } },
+      orderBy: { created_at: 'desc' },
+      take: 8,
+      select: { name: true, slug: true, logo_url: true, primary_color: true, secondary_color: true },
+    });
+    return { data: rows };
+  }
+
   @Get('legal')
   async legal() {
     const row = await this.prisma.platformSetting.findUnique({
