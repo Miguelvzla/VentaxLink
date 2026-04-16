@@ -10,7 +10,6 @@ type RecentStore = {
   secondary_color: string;
 };
 
-const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/v1").replace(/\/+$/, "");
 const storeOrigin = (process.env.NEXT_PUBLIC_STORE_ORIGIN ?? "http://localhost:3003").replace(/\/+$/, "");
 
 function StoreAvatar({ store }: { store: RecentStore }) {
@@ -62,7 +61,7 @@ export function StoreCarousel() {
   const posRef = useRef(0);
 
   useEffect(() => {
-    fetch(`${apiBase}/public/recent-stores`, { cache: "no-store" })
+    fetch("/api/recent-stores", { cache: "no-store" })
       .then((r) => r.json())
       .then((j: { data: RecentStore[] }) => {
         if (j.data?.length) setStores(j.data);
