@@ -1,10 +1,10 @@
 "use client";
 
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { postJson, type AuthResponse } from "@/lib/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { patchJson, postJson, postUploadTenantLogo, type AuthResponse } from "@/lib/api";
 import { getToken, saveSession } from "@/lib/auth";
 
 type PlanChoice = "STARTER" | "PRO" | "WHOLESALE";
@@ -49,6 +49,9 @@ export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [plan, setPlan] = useState<PlanChoice>(initialPlan ?? "STARTER");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [marketplaceTerms, setMarketplaceTerms] = useState(
@@ -78,6 +81,21 @@ export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps
     if (!slugTouched) setSlug(slugifyHint(v));
   }
 
+  function onLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    const url = URL.createObjectURL(file);
+    setLogoPreview(url);
+  }
+
+  function removeLogo() {
+    setLogoFile(null);
+    if (logoPreview) URL.revokeObjectURL(logoPreview);
+    setLogoPreview(null);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -102,6 +120,17 @@ export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps
         ...(ownerName.trim() ? { ownerName: ownerName.trim() } : {}),
       });
       saveSession(res);
+
+      // Subir logo si se eligió uno
+      if (logoFile) {
+        try {
+          const { url } = await postUploadTenantLogo(res.access_token, logoFile);
+          await patchJson("/tenant/me", res.access_token, { logo_url: url });
+        } catch {
+          // El logo falla silenciosamente; el comercio ya está creado
+        }
+      }
+
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
@@ -132,6 +161,44 @@ export function RegisterForm({ initialPlan, storePublicBase }: RegisterFormProps
           className="w-full rounded-xl border border-gray-200 bg-[#F3F4F6] px-4 py-3 text-[#374151] outline-none ring-[#22C55E] focus:ring-2"
         />
       </div>
+      {/* Logo opcional */}
+      <div>
+        <p className="mb-1 text-sm font-medium text-[#374151]">Logo del comercio (opcional)</p>
+        {logoPreview ? (
+          <div className="flex items-center gap-3">
+            <img
+              src={logoPreview}
+              alt="Vista previa logo"
+              className="h-16 w-16 rounded-xl border border-gray-200 object-contain bg-gray-50"
+            />
+            <button
+              type="button"
+              onClick={removeLogo}
+              className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs text-[#6B7280] hover:bg-gray-100"
+            >
+              <X className="h-3.5 w-3.5" />
+              Quitar
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => logoInputRef.current?.click()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-[#F3F4F6] py-3 text-sm text-[#6B7280] hover:bg-gray-100"
+          >
+            <Upload className="h-4 w-4" />
+            Subir logo
+          </button>
+        )}
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={onLogoChange}
+        />
+      </div>
+
       <div>
         <label htmlFor="slug" className="mb-1 block text-sm font-medium text-[#374151]">
           Tu link (solo letras minúsculas, números y guiones)
