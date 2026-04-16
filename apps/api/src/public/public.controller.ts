@@ -23,7 +23,10 @@ export class PublicController {
   @Get('recent-stores')
   async recentStores() {
     const rows = await this.prisma.tenant.findMany({
-      where: { status: { in: ['ACTIVE', 'TRIAL'] } },
+      where: {
+        status: { in: ['ACTIVE', 'TRIAL'] },
+        slug: { not: 'demo' },
+      },
       orderBy: { created_at: 'desc' },
       take: 8,
       select: { name: true, slug: true, logo_url: true, primary_color: true, secondary_color: true },

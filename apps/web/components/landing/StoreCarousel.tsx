@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type RecentStore = {
   name: string;
@@ -49,10 +49,22 @@ function StoreAvatar({ store }: { store: RecentStore }) {
   );
 }
 
-export function StoreCarousel({ stores }: { stores: RecentStore[] }) {
+export function StoreCarousel({ stores: initialStores }: { stores: RecentStore[] }) {
+  const [stores, setStores] = useState<RecentStore[]>(initialStores);
   const trackRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const posRef = useRef(0);
+
+  // Si el servidor no pudo cargar los datos, intentar desde el cliente
+  useEffect(() => {
+    if (initialStores.length > 0) return;
+    fetch("/api/recent-stores", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j: { data: RecentStore[] }) => {
+        if (j.data?.length) setStores(j.data);
+      })
+      .catch(() => {});
+  }, [initialStores.length]);
 
   // Auto-scroll suave e infinito
   useEffect(() => {
@@ -60,9 +72,11 @@ export function StoreCarousel({ stores }: { stores: RecentStore[] }) {
     const track = trackRef.current;
     if (!track) return;
 
-    const speed = 0.5; // px por frame
-    let paused = false;
+    posRef.current = 0;
+    track.style.transform = "translateX(0)";
 
+    const speed = 0.5;
+    let paused = false;
     const onEnter = () => { paused = true; };
     const onLeave = () => { paused = false; };
     track.addEventListener("mouseenter", onEnter);
@@ -86,6 +100,7 @@ export function StoreCarousel({ stores }: { stores: RecentStore[] }) {
     };
   }, [stores]);
 
+  // Siempre renderizamos la sección para que el anchor #clientes funcione
   if (!stores.length) return null;
 
   // Duplicar para efecto infinito
