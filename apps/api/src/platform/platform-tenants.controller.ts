@@ -34,7 +34,14 @@ export class PlatformTenantsController {
     return this.tenants.patchMarketplaceTerms(dto.terms ?? '');
   }
 
-  /** Super admin: contraseña provisoria para el OWNER del comercio (aparte del flujo “olvidé contraseña”). */
+  /** Cancelar cuenta: status CANCELLED + libera email para re-registro. */
+  @Post(':id/cancel')
+  @HttpCode(200)
+  cancel(@Param('id') id: string) {
+    return this.tenants.cancelTenant(id);
+  }
+
+  /** Super admin: contraseña provisoria para el OWNER del comercio. */
   @Post(':id/reset-owner-password')
   @HttpCode(200)
   resetOwnerPassword(@Param('id') id: string) {

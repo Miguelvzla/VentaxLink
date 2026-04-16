@@ -314,6 +314,60 @@ export class PlatformTenantsService {
   }
 
   /**
+   * Cancela una cuenta: status → CANCELLED, desactiva todos los usuarios y libera
+   * el email (renombra a cancelled+<ts>@…) para que se puedan volver a registrar.
+   */
+  async cancelTenant(id: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id },
+      select: { id: true, slug: true, name: true, email: true, status: true },
+    });
+    if (!tenant) throw new NotFoundException('Comercio no encontrado');
+    if (tenant.status === TenantStatus.CANCELLED) {
+      throw new BadRequestException('El comercio ya está cancelado');
+    }
+
+    const ts = Date.now();
+    const freeEmail = `cancelled+${ts}_${tenant.email}`;
+
+    await this.prisma.$transaction([
+      // Liberar el email del tenant
+      this.prisma.tenant.update({
+        where: { id },
+        data: {
+          status: TenantStatus.CANCELLED,
+          email: freeEmail,
+        },
+      }),
+      // Desactivar todos los usuarios y liberar sus emails
+      this.prisma.user.updateMany({
+        where: { tenant_id: id },
+        data: { is_active: false },
+      }),
+    ]);
+
+    // Renombrar emails de usuarios en una segunda pasada (updateMany no permite expresiones)
+    const users = await this.prisma.user.findMany({
+      where: { tenant_id: id },
+      select: { id: true, email: true },
+    });
+    await Promise.all(
+      users.map((u) =>
+        this.prisma.user.update({
+          where: { id: u.id },
+          data: { email: `cancelled+${ts}_${u.email}` },
+        }),
+      ),
+    );
+
+    this.logger.warn(
+      `[platform] cuenta CANCELADA tenant=${tenant.slug} email liberado=${tenant.email}`,
+    );
+
+    return { ok: true, message: `Cuenta cancelada. El email ${tenant.email} quedó libre para re-registro.` };
+  }
+
+  /**
    * Solo plataforma: asigna contraseña provisoria al usuario OWNER activo del comercio.
    * Invalida tokens de “olvidé contraseña”. La clave solo se devuelve una vez en la respuesta.
    */

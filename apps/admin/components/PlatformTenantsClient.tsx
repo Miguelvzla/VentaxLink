@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getJsonPlatform, patchJsonPlatform } from "@/lib/api";
+import { getJsonPlatform, patchJsonPlatform, postJsonPlatform } from "@/lib/api";
 import { downloadXlsx } from "@/lib/exportExcel";
 import { clearPlatformSession, getPlatformToken } from "@/lib/platform-session";
 import { whatsappMeUrlFromPhone } from "@/lib/whatsapp";
@@ -117,6 +117,8 @@ export function PlatformTenantsClient() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [suspendFor, setSuspendFor] = useState<TenantRow | null>(null);
   const [holdMessage, setHoldMessage] = useState("");
+  const [cancelFor, setCancelFor] = useState<TenantRow | null>(null);
+  const [cancelResult, setCancelResult] = useState<string | null>(null);
 
   const [configFor, setConfigFor] = useState<TenantRow | null>(null);
   const [planExpiresInput, setPlanExpiresInput] = useState("");
@@ -218,6 +220,26 @@ export function PlatformTenantsClient() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo suspender");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function confirmCancel() {
+    if (!token || !cancelFor) return;
+    setBusyId(cancelFor.id);
+    setError(null);
+    try {
+      const res = await postJsonPlatform<{ ok: boolean; message: string }>(
+        `/platform/tenants/${cancelFor.id}/cancel`,
+        token,
+        {},
+      );
+      setCancelResult(res.message ?? "Cuenta cancelada correctamente.");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo cancelar");
+      setCancelFor(null);
     } finally {
       setBusyId(null);
     }
@@ -563,6 +585,16 @@ export function PlatformTenantsClient() {
                             Suspender (mora)
                           </button>
                         ) : null}
+                        {t.status !== "CANCELLED" && (
+                          <button
+                            type="button"
+                            disabled={busyId === t.id}
+                            onClick={() => setCancelFor(t)}
+                            className="text-xs font-medium text-red-400 hover:underline disabled:opacity-50"
+                          >
+                            Cancelar cuenta
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -729,6 +761,62 @@ export function PlatformTenantsClient() {
                 className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
               >
                 {busyId === configFor.id ? "Guardando…" : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Modal confirmar cancelación */}
+      {cancelFor && !cancelResult ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-red-900/60 bg-slate-900 p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-red-300">Cancelar cuenta</h2>
+            <p className="mt-3 text-sm text-slate-300">
+              Vas a cancelar la cuenta de <strong className="text-white">{cancelFor.name}</strong>{" "}
+              (<span className="font-mono text-slate-400">{cancelFor.email}</span>).
+            </p>
+            <ul className="mt-3 space-y-1.5 text-xs text-slate-400">
+              <li>• El estado pasa a <strong className="text-red-300">CANCELADO</strong></li>
+              <li>• Todos los usuarios del panel quedan desactivados</li>
+              <li>• El email <strong className="text-white">{cancelFor.email}</strong> queda libre para re-registro</li>
+              <li>• Los datos de la tienda (productos, pedidos) se conservan</li>
+            </ul>
+            <p className="mt-3 text-xs font-medium text-amber-400">Esta acción no se puede deshacer fácilmente.</p>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCancelFor(null)}
+                className="rounded-xl border border-slate-600 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={busyId === cancelFor.id}
+                onClick={() => void confirmCancel()}
+                className="rounded-xl bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+              >
+                {busyId === cancelFor.id ? "Procesando…" : "Confirmar cancelación"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Modal resultado cancelación */}
+      {cancelResult ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-emerald-900/60 bg-slate-900 p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-emerald-300">Cuenta cancelada</h2>
+            <p className="mt-3 text-sm text-slate-300">{cancelResult}</p>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => { setCancelResult(null); setCancelFor(null); }}
+                className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+              >
+                Entendido
               </button>
             </div>
           </div>
