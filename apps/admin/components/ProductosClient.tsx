@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ImageCropModal } from "./ImageCropModal";
 import {
   type AdminCategory,
   type AdminProduct,
@@ -152,6 +153,8 @@ export function ProductosClient() {
   const [showCatPanel, setShowCatPanel] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [savingCat, setSavingCat] = useState(false);
+  /** Archivo pendiente de recorte: { file, slot } */
+  const [pendingCrop, setPendingCrop] = useState<{ file: File; slot: number } | null>(null);
   /** Guardando posición desde la tabla (fila o intercambio). */
   const [sortBusy, setSortBusy] = useState(false);
   const [plan, setPlan] = useState<string | null>(null);
@@ -357,6 +360,25 @@ export function ProductosClient() {
     }
   }
 
+  async function uploadFileToSlot(file: File, slot: number) {
+    if (!token) return;
+    setUploadingSlot(slot);
+    setError(null);
+    setPendingCrop(null);
+    try {
+      const { url } = await postUploadProductImage(token, file);
+      setForm((f) => {
+        const next: [string, string, string] = [f.image_urls[0], f.image_urls[1], f.image_urls[2]];
+        next[slot] = url;
+        return { ...f, image_urls: next };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo subir la imagen");
+    } finally {
+      setUploadingSlot(null);
+    }
+  }
+
   async function onAddCategory() {
     if (!token || !newCatName.trim()) return;
     setSavingCat(true);
@@ -395,6 +417,13 @@ export function ProductosClient() {
 
   return (
     <div className="space-y-8">
+      {pendingCrop && (
+        <ImageCropModal
+          file={pendingCrop.file}
+          onCrop={(croppedFile) => void uploadFileToSlot(croppedFile, pendingCrop.slot)}
+          onCancel={() => void uploadFileToSlot(pendingCrop.file, pendingCrop.slot)}
+        />
+      )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold text-[#111827]">Productos</h1>
@@ -637,28 +666,11 @@ export function ProductosClient() {
                     accept="image/*"
                     aria-label={`Elegir imagen para la foto ${idx + 1}`}
                     className="sr-only"
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       const file = e.target.files?.[0];
                       e.target.value = "";
                       if (!file || !token) return;
-                      setUploadingSlot(idx);
-                      setError(null);
-                      try {
-                        const { url } = await postUploadProductImage(token, file);
-                        setForm((f) => {
-                          const next: [string, string, string] = [
-                            f.image_urls[0],
-                            f.image_urls[1],
-                            f.image_urls[2],
-                          ];
-                          next[idx] = url;
-                          return { ...f, image_urls: next };
-                        });
-                      } catch (err) {
-                        setError(err instanceof Error ? err.message : "No se pudo subir la imagen");
-                      } finally {
-                        setUploadingSlot(null);
-                      }
+                      setPendingCrop({ file, slot: idx });
                     }}
                   />
                   <div className="mt-2 flex flex-wrap items-center gap-3">
