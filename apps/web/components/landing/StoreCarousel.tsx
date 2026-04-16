@@ -66,58 +66,71 @@ export function StoreCarousel({ stores: initialStores }: { stores: RecentStore[]
       .catch(() => {});
   }, [initialStores.length]);
 
-  // Auto-scroll suave e infinito
+  // Animar solo cuando el track es más ancho que su contenedor visible
   useEffect(() => {
-    if (!stores.length) return;
     const track = trackRef.current;
     if (!track) return;
+    if (!stores.length) return;
 
-    posRef.current = 0;
-    track.style.transform = "translateX(0)";
+    // Esperar un frame para que el DOM esté pintado y scrollWidth sea correcto
+    const raf = requestAnimationFrame(() => {
+      const parent = track.parentElement;
+      if (!parent) return;
+      // Si el contenido no supera el ancho visible, no hace falta animar
+      if (track.scrollWidth <= parent.clientWidth) return;
 
-    const speed = 0.5;
-    let paused = false;
-    const onEnter = () => { paused = true; };
-    const onLeave = () => { paused = false; };
-    track.addEventListener("mouseenter", onEnter);
-    track.addEventListener("mouseleave", onLeave);
+      posRef.current = 0;
+      track.style.transform = "translateX(0)";
 
-    const step = () => {
-      if (!paused && track) {
-        posRef.current += speed;
-        const half = track.scrollWidth / 2;
-        if (posRef.current >= half) posRef.current = 0;
-        track.style.transform = `translateX(-${posRef.current}px)`;
-      }
+      const speed = 0.6;
+      let paused = false;
+      const onEnter = () => { paused = true; };
+      const onLeave = () => { paused = false; };
+      track.addEventListener("mouseenter", onEnter);
+      track.addEventListener("mouseleave", onLeave);
+
+      const step = () => {
+        if (!paused) {
+          posRef.current += speed;
+          const half = track.scrollWidth / 2;
+          if (posRef.current >= half) posRef.current = 0;
+          track.style.transform = `translateX(-${posRef.current}px)`;
+        }
+        animRef.current = requestAnimationFrame(step);
+      };
       animRef.current = requestAnimationFrame(step);
-    };
-    animRef.current = requestAnimationFrame(step);
 
-    return () => {
-      cancelAnimationFrame(animRef.current);
-      track.removeEventListener("mouseenter", onEnter);
-      track.removeEventListener("mouseleave", onLeave);
-    };
+      return () => {
+        cancelAnimationFrame(animRef.current);
+        track.removeEventListener("mouseenter", onEnter);
+        track.removeEventListener("mouseleave", onLeave);
+      };
+    });
+
+    return () => cancelAnimationFrame(raf);
   }, [stores]);
 
-  // Siempre renderizamos la sección para que el anchor #clientes funcione
   if (!stores.length) return null;
 
-  // Duplicar para efecto infinito
-  const doubled = [...stores, ...stores];
+  // Repetir las tiendas hasta tener al menos 8 tarjetas (para que llene la pantalla)
+  const minItems = 8;
+  let display = [...stores];
+  while (display.length < minItems) display = [...display, ...stores];
+  // Duplicar para el loop infinito
+  const doubled = [...display, ...display];
 
   return (
-    <section className="border-b border-gray-100 bg-gradient-to-b from-white to-[#F9FAFB] py-10 sm:py-12 overflow-hidden">
+    <section className="border-b border-gray-100 bg-gradient-to-b from-white to-[#F9FAFB] py-10 sm:py-12">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <p className="mb-6 text-center text-sm font-semibold uppercase tracking-widest text-[#9CA3AF]">
+        <p className="mb-8 text-center text-sm font-semibold uppercase tracking-widest text-[#9CA3AF]">
           Tiendas que ya usan VentaXLink
         </p>
       </div>
       <div className="overflow-hidden">
         <div
           ref={trackRef}
-          className="flex gap-8 sm:gap-10"
-          style={{ width: "max-content", willChange: "transform" }}
+          className="flex items-start gap-10 sm:gap-14"
+          style={{ width: "max-content", willChange: "transform", paddingInline: "2.5rem" }}
         >
           {doubled.map((s, i) => (
             <StoreAvatar key={`${s.slug}-${i}`} store={s} />
