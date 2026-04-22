@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { ProductCardCarousel } from "@/components/ProductCardCarousel";
 import type { ProductListItem } from "@/lib/api";
+import { contrastText, readableOnWhite } from "@/lib/color-utils";
 
 type Props = {
   product: ProductListItem;
@@ -14,6 +15,8 @@ export function ProductCard({ product, slug, primaryColor, pointsEarned }: Props
   const price = formatArs(product.price);
   const old = product.compare_price ? formatArs(product.compare_price) : null;
   const productHref = `/tienda/${slug}/productos/${product.slug}`;
+  const badgeTextColor = contrastText(primaryColor);
+  const priceColor = readableOnWhite(primaryColor);
 
   return (
     <article className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
@@ -27,8 +30,8 @@ export function ProductCard({ product, slug, primaryColor, pointsEarned }: Props
         ) : null}
         {product.is_featured ? (
           <span
-            className="pointer-events-none absolute right-2 top-2 z-10 rounded-full px-2 py-0.5 text-xs font-medium text-white"
-            style={{ backgroundColor: primaryColor }}
+            className="pointer-events-none absolute right-2 top-2 z-10 rounded-full px-2 py-0.5 text-xs font-medium"
+            style={{ backgroundColor: primaryColor, color: badgeTextColor }}
           >
             Destacado
           </span>
@@ -37,7 +40,7 @@ export function ProductCard({ product, slug, primaryColor, pointsEarned }: Props
 
       {/* Text + price section */}
       <div className="p-3 sm:p-4">
-        <h2 className="font-medium text-[#111827] line-clamp-2 text-sm sm:text-base">
+        <h2 className="line-clamp-2 text-sm font-medium text-[#111827] sm:text-base">
           {product.name}
         </h2>
         {product.short_desc ? (
@@ -46,19 +49,19 @@ export function ProductCard({ product, slug, primaryColor, pointsEarned }: Props
           </p>
         ) : null}
         <div className="mt-2 flex items-baseline gap-1.5">
-          <span className="text-base font-bold sm:text-lg" style={{ color: primaryColor }}>
+          <span className="text-base font-bold sm:text-lg" style={{ color: priceColor }}>
             {price}
           </span>
-          {old ? <span className="text-xs text-[#9CA3AF] line-through sm:text-sm">{old}</span> : null}
+          {old ? (
+            <span className="text-xs text-[#9CA3AF] line-through sm:text-sm">{old}</span>
+          ) : null}
         </div>
         {pointsEarned != null && pointsEarned > 0 ? (
-          <p className="mt-1 text-xs font-medium text-emerald-700">
-            ~{pointsEarned} pts
-          </p>
+          <p className="mt-1 text-xs font-medium text-emerald-700">~{pointsEarned} pts</p>
         ) : null}
       </div>
 
-      {/* Full-card link sits ABOVE text but BELOW the add-to-cart button */}
+      {/* Full-card link sits above text but below the add-to-cart button */}
       <Link
         href={productHref}
         className="absolute inset-0 z-[5]"

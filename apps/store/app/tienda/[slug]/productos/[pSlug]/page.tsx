@@ -6,6 +6,7 @@ import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 import { ProductShareButton } from "@/components/ProductShareButton";
 import { ProductViewTracker } from "@/components/ProductViewTracker";
 import { estimateProductPoints, fetchProduct, fetchTenant } from "@/lib/api";
+import { readableOnWhite } from "@/lib/color-utils";
 import { filterRenderableProductImages } from "@/lib/product-images";
 import { resolvePublicMediaUrl } from "@/lib/public-media-url";
 
@@ -103,7 +104,7 @@ export default async function ProductoDetallePage({
           {p.short_desc ? <p className="mt-2 text-[#6B7280]">{p.short_desc}</p> : null}
 
           <div className="mt-6 flex items-baseline gap-3">
-            <span className="text-3xl font-bold" style={{ color: tenant.primary_color }}>
+            <span className="text-3xl font-bold" style={{ color: readableOnWhite(tenant.primary_color) }}>
               {formatArs(p.price)}
             </span>
             {p.compare_price ? (

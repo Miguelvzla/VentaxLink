@@ -13,6 +13,20 @@ import { getStoredTenant, getToken, mergeStoredTenant } from "@/lib/auth";
 
 type MeResponse = { data: TenantMe };
 
+function isColorTooLight(hex: string): boolean {
+  try {
+    const c = hex.replace(/^#/, "").padEnd(6, "0");
+    const r = parseInt(c.slice(0, 2), 16) / 255;
+    const g = parseInt(c.slice(2, 4), 16) / 255;
+    const b = parseInt(c.slice(4, 6), 16) / 255;
+    const lin = (x: number) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return L > 0.5;
+  } catch {
+    return false;
+  }
+}
+
 type FormState = {
   name: string;
   description: string;
@@ -269,6 +283,11 @@ export function ConfiguracionClient() {
                   className="w-full rounded-xl border border-gray-200 px-4 py-2.5 font-mono text-sm text-[#374151] outline-none ring-[#2563EB] focus:ring-2"
                 />
               </div>
+              {isColorTooLight(form.primary_color) && (
+                <p className="mt-1.5 text-xs text-amber-600">
+                  ⚠️ Este color es muy claro — el precio y las etiquetas pueden ser invisibles en la tienda. Elegí un color más oscuro.
+                </p>
+              )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-[#374151]">Color secundario</label>
