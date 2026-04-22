@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { ProductCardCarousel } from "@/components/ProductCardCarousel";
 import type { ProductListItem } from "@/lib/api";
-import { contrastText, readableOnWhite } from "@/lib/color-utils";
+import { badgeTextOnColor, readableOnWhite } from "@/lib/color-utils";
 
 type Props = {
   product: ProductListItem;
@@ -15,7 +15,7 @@ export function ProductCard({ product, slug, primaryColor, pointsEarned }: Props
   const price = formatArs(product.price);
   const old = product.compare_price ? formatArs(product.compare_price) : null;
   const productHref = `/tienda/${slug}/productos/${product.slug}`;
-  const badgeTextColor = contrastText(primaryColor);
+  const badgeTextColor = badgeTextOnColor(primaryColor);
   const priceColor = readableOnWhite(primaryColor);
 
   return (

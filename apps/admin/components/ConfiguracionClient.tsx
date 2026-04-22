@@ -21,7 +21,7 @@ function isColorTooLight(hex: string): boolean {
     const b = parseInt(c.slice(4, 6), 16) / 255;
     const lin = (x: number) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
     const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    return L > 0.5;
+    return L > 0.7;
   } catch {
     return false;
   }

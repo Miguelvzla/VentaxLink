@@ -9,26 +9,28 @@ function hexLuminance(hex: string): number {
 }
 
 /**
- * Returns black or white text color that gives best contrast
- * against the given background hex color.
+ * Price text is displayed on a WHITE card background.
+ * Only replace the brand color with a dark fallback when the color is so light
+ * it would be nearly invisible on white (luminance > 0.7 ≈ very light / near-white).
+ * Readable colors (greens, blues, dark reds, etc.) are kept as-is.
  */
-export function contrastText(bgHex: string): string {
+export function readableOnWhite(hex: string, fallback = "#111827"): string {
   try {
-    return hexLuminance(bgHex) > 0.179 ? "#111827" : "#ffffff";
+    return hexLuminance(hex) > 0.7 ? fallback : hex;
   } catch {
-    return "#ffffff";
+    return fallback;
   }
 }
 
 /**
- * If `hex` is too light to read against a white background,
- * returns a safe dark fallback color.
- * Used for price text displayed on white cards.
+ * Badge text color: always white (original brand behavior).
+ * Only switch to dark when the badge background is near-white
+ * (luminance > 0.85) so the text doesn't become invisible.
  */
-export function readableOnWhite(hex: string, fallback = "#111827"): string {
+export function badgeTextOnColor(bgHex: string): string {
   try {
-    return hexLuminance(hex) > 0.5 ? fallback : hex;
+    return hexLuminance(bgHex) > 0.85 ? "#374151" : "#ffffff";
   } catch {
-    return fallback;
+    return "#ffffff";
   }
 }
