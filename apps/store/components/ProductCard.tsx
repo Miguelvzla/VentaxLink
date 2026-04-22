@@ -7,7 +7,6 @@ type Props = {
   product: ProductListItem;
   slug: string;
   primaryColor: string;
-  /** Puntos que representa el precio del producto si el comercio tiene programa activo */
   pointsEarned?: number | null;
 };
 
@@ -17,51 +16,57 @@ export function ProductCard({ product, slug, primaryColor, pointsEarned }: Props
   const productHref = `/tienda/${slug}/productos/${product.slug}`;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
-      {/* Un solo enlace invisible: imagen + texto; los clics pasan a través del contenido con pointer-events-none salvo el carrusel */}
-      <div className="relative flex flex-col">
-        <Link
-          href={productHref}
-          className="absolute inset-0 z-0"
-          aria-label={`Ver ${product.name}`}
-        />
-        <div className="relative z-[1] flex flex-col pointer-events-none">
-          <div className="pointer-events-none relative aspect-square bg-[#F3F4F6]">
-            <div className="pointer-events-none relative z-[1] h-full w-full">
-              <ProductCardCarousel images={product.images} name={product.name} />
-            </div>
-            {product.is_new ? (
-              <span className="pointer-events-none absolute left-2 top-2 z-[3] rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-medium text-white">
-                Nuevo
-              </span>
-            ) : null}
-            {product.is_featured ? (
-              <span
-                className="pointer-events-none absolute right-2 top-2 z-[3] rounded-full px-2 py-0.5 text-xs font-medium text-white"
-                style={{ backgroundColor: primaryColor }}
-              >
-                Destacado
-              </span>
-            ) : null}
-          </div>
-          <div className="p-4">
-            <h2 className="font-medium text-[#111827] line-clamp-2">{product.name}</h2>
-            {product.short_desc ? <p className="mt-1 line-clamp-2 text-xs text-[#9CA3AF]">{product.short_desc}</p> : null}
-            <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-lg font-bold" style={{ color: primaryColor }}>
-                {price}
-              </span>
-              {old ? <span className="text-sm text-[#9CA3AF] line-through">{old}</span> : null}
-            </div>
-            {pointsEarned != null && pointsEarned > 0 ? (
-              <p className="mt-2 text-xs font-medium text-emerald-700">
-                ~{pointsEarned} pts si el pedido se entrega (programa del comercio)
-              </p>
-            ) : null}
-          </div>
-        </div>
+    <article className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow hover:shadow-md">
+      {/* Image section */}
+      <div className="relative aspect-square bg-[#F3F4F6]">
+        <ProductCardCarousel images={product.images} name={product.name} />
+        {product.is_new ? (
+          <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-medium text-white">
+            Nuevo
+          </span>
+        ) : null}
+        {product.is_featured ? (
+          <span
+            className="pointer-events-none absolute right-2 top-2 z-10 rounded-full px-2 py-0.5 text-xs font-medium text-white"
+            style={{ backgroundColor: primaryColor }}
+          >
+            Destacado
+          </span>
+        ) : null}
       </div>
-      <div className="relative z-10 bg-white px-4 pb-4 pt-0">
+
+      {/* Text + price section */}
+      <div className="p-3 sm:p-4">
+        <h2 className="font-medium text-[#111827] line-clamp-2 text-sm sm:text-base">
+          {product.name}
+        </h2>
+        {product.short_desc ? (
+          <p className="mt-1 hidden line-clamp-1 text-xs text-[#9CA3AF] sm:block">
+            {product.short_desc}
+          </p>
+        ) : null}
+        <div className="mt-2 flex items-baseline gap-1.5">
+          <span className="text-base font-bold sm:text-lg" style={{ color: primaryColor }}>
+            {price}
+          </span>
+          {old ? <span className="text-xs text-[#9CA3AF] line-through sm:text-sm">{old}</span> : null}
+        </div>
+        {pointsEarned != null && pointsEarned > 0 ? (
+          <p className="mt-1 text-xs font-medium text-emerald-700">
+            ~{pointsEarned} pts
+          </p>
+        ) : null}
+      </div>
+
+      {/* Full-card link sits ABOVE text but BELOW the add-to-cart button */}
+      <Link
+        href={productHref}
+        className="absolute inset-0 z-[5]"
+        aria-label={`Ver ${product.name}`}
+      />
+
+      {/* Add-to-cart sits above the overlay link */}
+      <div className="relative z-10 bg-white px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
         <AddToCartButton
           slug={slug}
           primaryColor={primaryColor}
@@ -81,5 +86,9 @@ export function ProductCard({ product, slug, primaryColor, pointsEarned }: Props
 function formatArs(value: string) {
   const n = Number(value);
   if (Number.isNaN(n)) return value;
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  }).format(n);
 }
