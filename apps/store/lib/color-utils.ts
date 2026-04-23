@@ -34,3 +34,16 @@ export function badgeTextOnColor(bgHex: string): string {
     return "#ffffff";
   }
 }
+
+/**
+ * Solid button text color.
+ * Keep white for regular/saturated brand colors and switch to dark text only
+ * when the background is very light (including white tones).
+ */
+export function buttonTextOnColor(bgHex: string): string {
+  try {
+    return hexLuminance(bgHex) > 0.7 ? "#111827" : "#ffffff";
+  } catch {
+    return "#ffffff";
+  }
+}

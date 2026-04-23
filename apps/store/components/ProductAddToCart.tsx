@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { addToCart } from "@/lib/cart";
+import { buttonTextOnColor } from "@/lib/color-utils";
 
 type ProductRef = {
   slug: string;
@@ -23,6 +24,7 @@ export function ProductAddToCart({ slug, product, primaryColor }: Props) {
   const [hint, setHint] = useState<string | null>(null);
   const max = product.track_stock ? Math.max(0, product.stock) : 999;
   const disabled = product.track_stock && product.stock <= 0;
+  const buttonTextColor = buttonTextOnColor(primaryColor);
 
   function onAdd() {
     setHint(null);
@@ -68,8 +70,8 @@ export function ProductAddToCart({ slug, product, primaryColor }: Props) {
             <button
               type="button"
               onClick={onAdd}
-              className="rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
-              style={{ backgroundColor: primaryColor }}
+              className="rounded-xl px-6 py-2.5 text-sm font-semibold"
+              style={{ backgroundColor: primaryColor, color: buttonTextColor }}
             >
               Agregar al carrito
             </button>

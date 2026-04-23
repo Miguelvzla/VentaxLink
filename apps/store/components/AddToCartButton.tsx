@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { addToCart } from "@/lib/cart";
+import { buttonTextOnColor } from "@/lib/color-utils";
 
 type ProductRef = {
   slug: string;
@@ -22,6 +23,7 @@ export function AddToCartButton({ slug, product, primaryColor }: Props) {
   const [hint, setHint] = useState<string | null>(null);
   const max = product.track_stock ? Math.max(1, product.stock) : 99;
   const disabled = product.track_stock && product.stock <= 0;
+  const buttonTextColor = buttonTextOnColor(primaryColor);
 
   function onClick() {
     setHint(null);
@@ -83,8 +85,8 @@ export function AddToCartButton({ slug, product, primaryColor }: Props) {
         type="button"
         disabled={disabled}
         onClick={onClick}
-        className="w-full rounded-xl py-2.5 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-        style={{ backgroundColor: primaryColor }}
+        className="w-full rounded-xl py-2.5 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+        style={{ backgroundColor: primaryColor, color: buttonTextColor }}
       >
         {disabled ? "Sin stock" : "Agregar al carrito"}
       </button>
