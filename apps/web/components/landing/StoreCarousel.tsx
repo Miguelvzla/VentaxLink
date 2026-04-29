@@ -13,6 +13,8 @@ export type RecentStore = {
 const storeOrigin = (process.env.NEXT_PUBLIC_STORE_ORIGIN ?? "http://localhost:3003").replace(/\/+$/, "");
 
 function StoreAvatar({ store }: { store: RecentStore }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImage = Boolean(store.logo_url) && !imgFailed;
   return (
     <a
       href={`${storeOrigin}/tienda/${store.slug}`}
@@ -24,17 +26,18 @@ function StoreAvatar({ store }: { store: RecentStore }) {
       <div
         className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl shadow-md ring-2 ring-white transition-all group-hover:scale-110 group-hover:shadow-lg sm:h-20 sm:w-20"
         style={{
-          background: store.logo_url
+          background: showImage
             ? undefined
             : `linear-gradient(135deg, ${store.primary_color}, ${store.secondary_color})`,
         }}
       >
-        {store.logo_url ? (
+        {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={store.logo_url}
+            src={store.logo_url!}
             alt={store.name}
             className="h-full w-full object-contain p-1.5"
+            onError={() => setImgFailed(true)}
           />
         ) : (
           <span className="text-2xl font-bold text-white sm:text-3xl">

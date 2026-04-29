@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { OrderNotificationsService } from '../notifications/order-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
 import { CommercialContactDto } from './dto/commercial-contact.dto';
 
 @Controller('public')
@@ -31,7 +32,12 @@ export class PublicController {
       take: 8,
       select: { name: true, slug: true, logo_url: true, primary_color: true, secondary_color: true },
     });
-    return { data: rows };
+    return {
+      data: rows.map((r) => ({
+        ...r,
+        logo_url: rewriteStoredUploadsUrl(r.logo_url),
+      })),
+    };
   }
 
   @Get('legal')
