@@ -13,11 +13,18 @@ import { JwtAuthGuard } from './jwt-auth.guard';
     JwtModule.registerAsync({
       global: true,
       useFactory: () => {
+        const secret = process.env.JWT_SECRET?.trim();
+        if (!secret || secret.length < 32) {
+          throw new Error(
+            'JWT_SECRET es obligatorio y debe tener al menos 32 caracteres. ' +
+              'Generá uno con: openssl rand -hex 64',
+          );
+        }
         const raw = process.env.JWT_EXPIRES_IN;
         const expiresInSec =
           raw && /^\d+$/.test(raw) ? Number(raw) : 60 * 60 * 24 * 7;
         return {
-          secret: process.env.JWT_SECRET || 'dev-only-cambiar-en-produccion-minimo-32',
+          secret,
           signOptions: { expiresIn: expiresInSec },
         };
       },
