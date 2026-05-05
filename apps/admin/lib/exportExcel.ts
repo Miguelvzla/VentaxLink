@@ -34,8 +34,8 @@ export async function downloadXlsx(
     }),
   );
 
-  await writeXlsxFile([headerRow, ...dataRows], {
-    fileName: filename,
+  const result = writeXlsxFile([headerRow, ...dataRows], {
     sheet: sheetName.slice(0, 31),
   });
+  await result.toFile(filename);
 }
