@@ -1,4 +1,4 @@
-import writeXlsxFile from "write-excel-file";
+import writeXlsxFile from "write-excel-file/browser";
 
 type Cell = string | number | null | undefined;
 type Row = Record<string, Cell>;
