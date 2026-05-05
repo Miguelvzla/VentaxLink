@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { PatchMarketplaceTermsDto } from './dto/patch-marketplace-terms.dto';
 import { PlatformPatchTenantDto } from './dto/platform-patch-tenant.dto';
 import { PlatformJwtAuthGuard } from './platform-jwt-auth.guard';
 import { PlatformTenantsService } from './platform-tenants.service';
@@ -30,8 +31,8 @@ export class PlatformTenantsController {
 
   @Patch('settings/marketplace-terms')
   @HttpCode(200)
-  patchMarketplaceTerms(@Body() dto: { terms?: string }) {
-    return this.tenants.patchMarketplaceTerms(dto.terms ?? '');
+  patchMarketplaceTerms(@Body() dto: PatchMarketplaceTermsDto) {
+    return this.tenants.patchMarketplaceTerms(dto.terms);
   }
 
   /** Cancelar cuenta: status CANCELLED + libera email para re-registro. */
