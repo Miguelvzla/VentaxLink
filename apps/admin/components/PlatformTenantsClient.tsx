@@ -322,7 +322,7 @@ export function PlatformTenantsClient() {
       Usuarios_panel: t._count.users,
       Último_acceso_panel: formatPanelLogin(t.last_panel_login_at),
     }));
-    downloadXlsx(
+    void downloadXlsx(
       `comercios-plataforma-${new Date().toISOString().slice(0, 10)}.xlsx`,
       "Comercios",
       rowsX,

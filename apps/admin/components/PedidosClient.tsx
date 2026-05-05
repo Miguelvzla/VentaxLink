@@ -126,7 +126,7 @@ export function PedidosClient() {
                 Entrega: o.delivery_type,
                 Productos: o.items.map((i) => `${i.product_name} x${i.quantity}`).join("; "),
               }));
-              downloadXlsx(
+              void downloadXlsx(
                 `pedidos-${new Date().toISOString().slice(0, 10)}.xlsx`,
                 "Pedidos",
                 rows,

@@ -97,7 +97,7 @@ export function ClientesClient() {
                 Último_pedido: formatDateShort(c.last_order_at),
                 Activo: c.is_active ? "Sí" : "No",
               }));
-              downloadXlsx(
+              void downloadXlsx(
                 `clientes-${new Date().toISOString().slice(0, 10)}.xlsx`,
                 "Clientes",
                 rows,
