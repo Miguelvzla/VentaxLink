@@ -40,7 +40,7 @@ async function bootstrap() {
     return (
       /^http:\/\/localhost:\d+$/.test(origin) ||
       /^http:\/\/127\.0\.0\.1:\d+$/.test(origin) ||
-      /^https:\/\/.*\.railway\.app$/.test(origin) ||
+      /^https:\/\/ventaxlink(api|admin|store|web)-production\.up\.railway\.app$/.test(origin) ||
       /^https:\/\/([a-z0-9-]+\.)*ventaxlink\.ar$/.test(origin)
     );
   }
