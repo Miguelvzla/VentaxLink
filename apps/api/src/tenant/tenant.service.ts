@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PlanType, Prisma } from '@prisma/client';
+import { encryptSecret } from '../common/crypto';
 import { OrderNotificationsService } from '../notifications/order-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
@@ -151,13 +152,13 @@ export class TenantService {
       data.smtp_user = null;
     } else if (dto.smtp_pass !== undefined) {
       const p = dto.smtp_pass.trim();
-      data.smtp_pass = p.length ? p : null;
+      data.smtp_pass = p.length ? encryptSecret(p) : null;
     }
     if (dto.clear_notify_callmebot_apikey === true) {
       data.notify_callmebot_apikey = null;
     } else if (dto.notify_callmebot_apikey !== undefined) {
       const k = dto.notify_callmebot_apikey.trim();
-      data.notify_callmebot_apikey = k.length ? k : null;
+      data.notify_callmebot_apikey = k.length ? encryptSecret(k) : null;
     }
     if (dto.plan !== undefined) {
       data.plan = dto.plan as PlanType;

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DeliveryType, PlanType } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
+import { decryptSecret } from '../common/crypto';
 import { redactEmail } from '../common/redact';
 import { ResendMailService } from './resend-mail.service';
 
@@ -154,13 +155,14 @@ export class OrderNotificationsService {
     const family = this.smtpSocketFamily();
     const familyOpt = family !== undefined ? { family } : {};
     if (tenantSmtp) {
+      const pass = decryptSecret(tenantSmtp.pass);
       return nodemailer.createTransport({
         host: tenantSmtp.host,
         port: tenantSmtp.port,
         secure: tenantSmtp.secure,
         auth:
-          tenantSmtp.user && tenantSmtp.pass
-            ? { user: tenantSmtp.user, pass: tenantSmtp.pass }
+          tenantSmtp.user && pass
+            ? { user: tenantSmtp.user, pass }
             : undefined,
         ...t,
         ...familyOpt,
@@ -435,10 +437,9 @@ ${p.notes ? `<tr><td style="padding:4px 12px 4px 0;color:#555;vertical-align:top
       this.logger.debug('auto_whatsapp desactivado: se omite WhatsApp al comercio');
       return;
     }
+    const tenantApikey = decryptSecret(p.callmebotApikey)?.trim() || null;
     const apikey =
-      (p.callmebotApikey && p.callmebotApikey.trim()) ||
-      process.env.CALLMEBOT_API_KEY?.trim() ||
-      null;
+      tenantApikey || process.env.CALLMEBOT_API_KEY?.trim() || null;
     if (!apikey) {
       this.logger.debug(
         'CallMeBot no configurado (clave del comercio ni CALLMEBOT_API_KEY): se omite WhatsApp',
