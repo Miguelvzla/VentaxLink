@@ -125,6 +125,13 @@ async function bootstrap() {
     legacyHeaders: false,
     skip: skipOptions,
   });
+  const resetPasswordLimiter = rateLimit({
+    windowMs: Number(process.env.RATE_LIMIT_RESET_PASSWORD_WINDOW_MS || 60_000),
+    max: Number(process.env.RATE_LIMIT_RESET_PASSWORD_MAX || 10),
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: skipOptions,
+  });
   const checkoutLimiter = rateLimit({
     windowMs: Number(process.env.RATE_LIMIT_CHECKOUT_WINDOW_MS || 60_000),
     max: Number(process.env.RATE_LIMIT_CHECKOUT_MAX || 20),
@@ -158,6 +165,7 @@ async function bootstrap() {
   app.use('/v1/auth/login', authLoginLimiter);
   app.use('/v1/auth/register', authRegisterLimiter);
   app.use('/v1/auth/forgot-password', forgotPasswordLimiter);
+  app.use('/v1/auth/reset-password', resetPasswordLimiter);
   app.use('/v1/store/:slug/checkout', checkoutLimiter);
   app.use('/v1/store/:slug/track', trackLimiter);
   app.use('/v1/store/:slug/mail-test', mailTestLimiter);
