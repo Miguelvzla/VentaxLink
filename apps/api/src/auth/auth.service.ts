@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PlanType, Prisma, Tenant, User, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { redactEmail } from '../common/redact';
 import { OrderNotificationsService } from '../notifications/order-notifications.service';
 import { ResendMailService } from '../notifications/resend-mail.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -33,13 +34,6 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-function redactEmail(email: string): string {
-  const [a, d] = email.split('@');
-  if (!d) return '***';
-  const head = a.length <= 2 ? '*' : `${a.slice(0, 2)}…`;
-  return `${head}@${d}`;
 }
 
 @Injectable()

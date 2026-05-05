@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PlanType, Prisma, TenantStatus, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { redactEmail } from '../common/redact';
 import { PrismaService } from '../prisma/prisma.service';
 import type { PlatformPatchTenantDto } from './dto/platform-patch-tenant.dto';
 
@@ -361,7 +362,7 @@ export class PlatformTenantsService {
     );
 
     this.logger.warn(
-      `[platform] cuenta CANCELADA tenant=${tenant.slug} email liberado=${tenant.email}`,
+      `[platform] cuenta CANCELADA tenant=${tenant.slug} email liberado=${redactEmail(tenant.email)}`,
     );
 
     return { ok: true, message: `Cuenta cancelada. El email ${tenant.email} quedó libre para re-registro.` };
@@ -406,7 +407,7 @@ export class PlatformTenantsService {
     ]);
 
     this.logger.warn(
-      `[platform] reset contraseña titular tenant=${tenant.slug} owner=${owner.email.slice(0, 2)}…`,
+      `[platform] reset contraseña titular tenant=${tenant.slug} owner=${redactEmail(owner.email)}`,
     );
 
     return {

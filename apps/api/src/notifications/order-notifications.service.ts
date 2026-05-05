@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DeliveryType, PlanType } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
+import { redactEmail } from '../common/redact';
 import { ResendMailService } from './resend-mail.service';
 
 export type OrderNotifyLine = {
@@ -202,7 +203,7 @@ export class OrderNotificationsService {
     const transporter = this.createTransporter(params.tenantSmtp);
     if (!transporter) {
       this.logger.warn(
-        `Recordatorio de cobro: sin SMTP configurado; no se envía mail a ${params.toEmail}`,
+        `Recordatorio de cobro: sin SMTP configurado; no se envía mail a ${redactEmail(params.toEmail)}`,
       );
       return false;
     }
@@ -214,7 +215,7 @@ export class OrderNotificationsService {
       text: params.text,
       html: params.html,
     });
-    this.logger.log(`Recordatorio de cobro enviado a ${params.toEmail}`);
+    this.logger.log(`Recordatorio de cobro enviado a ${redactEmail(params.toEmail)}`);
     return true;
   }
 
@@ -246,7 +247,7 @@ export class OrderNotificationsService {
           html,
         });
         this.logger.log(
-          `Email de pedido #${p.orderNumber} enviado a ${to} (SMTP comercio)`,
+          `Email de pedido #${p.orderNumber} enviado a ${redactEmail(to)} (SMTP comercio)`,
         );
         return;
       } catch (e) {
@@ -271,7 +272,7 @@ export class OrderNotificationsService {
             html,
           });
           this.logger.log(
-            `Email de pedido #${p.orderNumber} enviado a ${to} (SMTP plataforma)`,
+            `Email de pedido #${p.orderNumber} enviado a ${redactEmail(to)} (SMTP plataforma)`,
           );
           return;
         }
@@ -294,18 +295,18 @@ export class OrderNotificationsService {
       });
       if (ok) {
         this.logger.log(
-          `Email de pedido #${p.orderNumber} enviado a ${to} (Resend)`,
+          `Email de pedido #${p.orderNumber} enviado a ${redactEmail(to)} (Resend)`,
         );
       } else {
         this.logger.warn(
-          `Resend no pudo enviar aviso de pedido #${p.orderNumber} a ${to}`,
+          `Resend no pudo enviar aviso de pedido #${p.orderNumber} a ${redactEmail(to)}`,
         );
       }
       return;
     }
 
     this.logger.warn(
-      `No se pudo enviar email de pedido #${p.orderNumber} a ${to}: configurá SMTP del comercio, SMTP global (SMTP_HOST + MAIL_FROM) o RESEND_API_KEY en la API`,
+      `No se pudo enviar email de pedido #${p.orderNumber} a ${redactEmail(to)}: configurá SMTP del comercio, SMTP global (SMTP_HOST + MAIL_FROM) o RESEND_API_KEY en la API`,
     );
   }
 
@@ -370,7 +371,7 @@ export class OrderNotificationsService {
       );
       return;
     }
-    this.logger.log(`Confirmación de pedido enviada al cliente ${p.customerEmail}`);
+    this.logger.log(`Confirmación de pedido enviada al cliente ${redactEmail(p.customerEmail)}`);
   }
 
   private buildPlainText(p: OrderNotifyPayload): string {
@@ -578,7 +579,7 @@ ${p.notes ? `<tr><td style="padding:4px 12px 4px 0;color:#555;vertical-align:top
         `Mail de bienvenida no enviado a ${payload.tenantEmail}: falta SMTP global (SMTP_HOST + MAIL_FROM) en el proceso de la API`,
       );
     } else {
-      this.logger.log(`Mail de bienvenida enviado a ${payload.tenantEmail}`);
+      this.logger.log(`Mail de bienvenida enviado a ${redactEmail(payload.tenantEmail)}`);
     }
 
     const internals = internalNotifyRecipients();
@@ -692,7 +693,7 @@ ${payload.replyEmail ? `<p>Responder a: ${escapeHtml(payload.replyEmail)}</p>` :
       );
       return false;
     }
-    this.logger.log(`Contacto comercial enviado a ${to}`);
+    this.logger.log(`Contacto comercial enviado a ${redactEmail(to)}`);
 
     const primaryLower = to.toLowerCase();
     const internals = internalNotifyRecipients().filter(

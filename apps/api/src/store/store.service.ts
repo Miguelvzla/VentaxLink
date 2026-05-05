@@ -11,6 +11,7 @@ import { OrderNotificationsService } from '../notifications/order-notifications.
 import type { TenantSmtpForMail } from '../notifications/order-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { productDetailViewsAnalyticsForPlan } from '../common/plan-limits';
+import { redactEmail } from '../common/redact';
 import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
 import { CheckoutDto } from './dto/checkout.dto';
 import { TrackEventDto } from './dto/track-event.dto';
@@ -94,12 +95,6 @@ function escapeHtmlStore(s: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function redactEmailHint(email: string): string {
-  const [u, d] = email.split('@');
-  if (!d) return '***';
-  const left = u.length <= 2 ? '*' : `${u.slice(0, 2)}…`;
-  return `${left}@${d}`;
-}
 
 @Injectable()
 export class StoreService {
@@ -322,7 +317,7 @@ export class StoreService {
     const smtpUser = !!process.env.SMTP_USER?.trim();
     const smtpPass = !!process.env.SMTP_PASS?.trim();
     this.logger.log(
-      `[mail-test] inicio slug=${slug} plan=${tenant.plan} to=${redactEmailHint(toRaw)} smtp_host=${smtpHost} mail_from=${mailFrom} smtp_user=${smtpUser} smtp_pass=${smtpPass} port=${process.env.SMTP_PORT ?? '587'} secure=${process.env.SMTP_SECURE ?? 'false'}`,
+      `[mail-test] inicio slug=${slug} plan=${tenant.plan} to=${redactEmail(toRaw)} smtp_host=${smtpHost} mail_from=${mailFrom} smtp_user=${smtpUser} smtp_pass=${smtpPass} port=${process.env.SMTP_PORT ?? '587'} secure=${process.env.SMTP_SECURE ?? 'false'}`,
     );
 
     const subject = `[VentaXLink] Prueba de correo — ${tenant.name}`;
@@ -375,13 +370,13 @@ export class StoreService {
     }
 
     this.logger.log(
-      `[mail-test] enviado ok slug=${slug} to=${redactEmailHint(toRaw)}`,
+      `[mail-test] enviado ok slug=${slug} to=${redactEmail(toRaw)}`,
     );
     return {
       ok: true,
       message:
         'Correo de prueba enviado. Revisá la bandeja de entrada y spam.',
-      to_hint: redactEmailHint(toRaw),
+      to_hint: redactEmail(toRaw),
     };
   }
 
