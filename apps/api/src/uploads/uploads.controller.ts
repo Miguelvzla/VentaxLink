@@ -11,9 +11,11 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { mkdirSync } from 'fs';
+import { unlink } from 'fs/promises';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { JwtAuthGuard, JwtUserPayload } from '../auth/jwt-auth.guard';
+import { detectImageMime } from '../common/image-magic';
 import { buildUploadsStoredPath } from './public-asset-url';
 import { resolveUploadsRoot } from './uploads-path';
 
@@ -54,6 +56,21 @@ const imageFileFilter = (
   cb(null, true);
 };
 
+/**
+ * El mimetype declarado por el cliente no es confiable: validamos los
+ * magic bytes después de que Multer guardó el archivo y, si no coinciden
+ * con una imagen permitida, lo borramos del disco y respondemos 400.
+ */
+async function assertRealImageOrCleanup(filePath: string): Promise<void> {
+  const mime = await detectImageMime(filePath);
+  if (!mime) {
+    await unlink(filePath).catch(() => undefined);
+    throw new BadRequestException(
+      'El archivo no es una imagen válida (JPG, PNG, WEBP o GIF).',
+    );
+  }
+}
+
 @Controller('uploads')
 @UseGuards(JwtAuthGuard)
 export class UploadsController {
@@ -80,11 +97,12 @@ export class UploadsController {
       fileFilter: imageFileFilter,
     }),
   )
-  productImage(
+  async productImage(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: { protocol: string; get: (h: string) => string | undefined; user: JwtUserPayload },
   ) {
     if (!file) throw new BadRequestException('Seleccioná un archivo');
+    await assertRealImageOrCleanup(file.path);
     const rel = `tenants/${req.user.tid}/${file.filename}`;
     return { url: buildUploadsStoredPath(rel) };
   }
@@ -112,11 +130,12 @@ export class UploadsController {
       fileFilter: imageFileFilter,
     }),
   )
-  tenantLogo(
+  async tenantLogo(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: { protocol: string; get: (h: string) => string | undefined; user: JwtUserPayload },
   ) {
     if (!file) throw new BadRequestException('Seleccioná un archivo');
+    await assertRealImageOrCleanup(file.path);
     const rel = `tenants/${req.user.tid}/${file.filename}`;
     return { url: buildUploadsStoredPath(rel) };
   }
@@ -144,11 +163,12 @@ export class UploadsController {
       fileFilter: imageFileFilter,
     }),
   )
-  tenantBanner(
+  async tenantBanner(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: { protocol: string; get: (h: string) => string | undefined; user: JwtUserPayload },
   ) {
     if (!file) throw new BadRequestException('Seleccioná un archivo');
+    await assertRealImageOrCleanup(file.path);
     const rel = `tenants/${req.user.tid}/${file.filename}`;
     return { url: buildUploadsStoredPath(rel) };
   }
