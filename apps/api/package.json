@@ -12,10 +12,10 @@
   "dependencies": {
     "@jimp/js-jpeg": "^1.6.1",
     "@jimp/js-png": "^1.6.1",
-    "@nestjs/common": "^11.1.17",
-    "@nestjs/core": "^11.1.17",
+    "@nestjs/common": "^11.1.19",
+    "@nestjs/core": "^11.1.19",
     "@nestjs/jwt": "^11.0.2",
-    "@nestjs/platform-express": "^11.1.17",
+    "@nestjs/platform-express": "^11.1.19",
     "@nestjs/schedule": "^6.1.1",
     "@prisma/client": "^6.19.2",
     "bcryptjs": "^2.4.3",
