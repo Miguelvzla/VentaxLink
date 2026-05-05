@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as express from 'express';
 import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 
 for (const p of [
   resolve(process.cwd(), 'packages/database/.env'),
@@ -28,6 +29,13 @@ const skipOptions = (req: express.Request) => req.method === 'OPTIONS';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.set('trust proxy', 1);
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   const corsExtra = (process.env.CORS_ORIGINS ?? '')
     .split(',')
