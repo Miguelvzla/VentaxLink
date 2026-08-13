@@ -14,6 +14,8 @@
 - **3 mejoras a futuro** registradas como deuda técnica para cuando cambien condiciones (invitar empleados, integrar pagos, hardenizar sesiones).
 - `npm audit` pasó de **7 vulnerabilidades** (3 high, 4 moderate) a **2 vulnerabilidades transitivas** (postcss bundleado dentro de Next, no fixable hoy).
 
+> **Actualización 2026-08-13:** ver [§8](#8-puesta-al-día-de-dependencias--2026-08-13). Los advisories nuevos publicados desde mayo llevaron el audit a 18 hallazgos (13 high); quedó en 2, ninguno accionable. postcss y sharp se cerraron vía `overrides` sin necesidad del major de Next 16.
+
 ---
 
 ## 1) Hallazgos cerrados
@@ -119,3 +121,49 @@ Estas envs fueron agregadas durante el sprint y deben mantenerse:
 - Cualquier secret nuevo en BD: pasarlo por `encryptSecret()` antes de guardar.
 - Cualquier endpoint nuevo: `@UseGuards(JwtAuthGuard)` y, en cuanto exista `RolesGuard`, también `@Roles(...)`.
 - Si Next libera un patch con postcss actualizado, bumpear para cerrar las 2 vulns que quedan.
+
+---
+
+## 8) Puesta al día de dependencias — 2026-08-13
+
+En los ~100 días desde el cierre del sprint se publicaron advisories nuevos contra
+versiones que ya estaban instaladas. `npm audit` había subido a **18 hallazgos
+(13 high)**. Quedó en **2**, ninguno accionable.
+
+### Bumps aplicados
+
+| Paquete | De → A | Cierra |
+|---|---|---|
+| `nodemailer` | 8.0.7 → 8.0.11 | advisory de 8.0.x |
+| `express-rate-limit` | 8.1.0 → 8.6.2 | `ip-address` ≤10.3.0 (SSRF / trust-boundary bypass) |
+| `@nestjs/*` | 11.1.19 → 11.1.29 | `@nestjs/core`, `@nestjs/platform-express` |
+| `multer` | 2.1.1 → 2.2.0 | advisory de multer |
+| `next` | 15.5.15 → 15.5.23 | patch (no cierra advisories por sí solo) |
+| `turbo` | 2.8.21 → 2.10.9 | ejecución local de código, CSRF en login callback |
+| transitivas | vía `npm audit fix` | `brace-expansion`, `fast-uri`, `js-yaml`, `lodash`, `qs`, `body-parser` |
+
+### postcss / sharp / nanoid: resueltos sin ir a Next 16
+
+`npm audit` insistía en que el único fix era `next@16` (major), porque los tres
+vienen anidados dentro de Next 15. Se resolvieron **forzando las versiones
+parcheadas desde el bloque `overrides`** de la raíz, sin el major:
+
+- `postcss` **8.5.26** — XSS por `</style>` sin escapar y path traversal vía
+  `sourceMappingURL`. Además pasó de `"^8"` a versión exacta como dependencia
+  directa: npm rechaza un override que entre en conflicto con un rango directo.
+- `sharp` **0.35.3** — CVEs heredados de libvips. **Es la que más importaba**: la
+  tienda pública renderiza con `next/image` imágenes que suben los comercios, así
+  que sharp procesa input no confiable en runtime.
+- `nanoid` **3.3.18** — loop infinito con size cero o negativo.
+
+Verificado: `web`, `admin`, `store` y `api` compilan limpio con las versiones forzadas.
+
+### Los 2 que quedan (ninguno explotable acá)
+
+- **`nodemailer` (high)** — el advisory requiere la opción `raw` a nivel mensaje,
+  que permite saltear `disableFileAccess` / `disableUrlAccess`. **No se usa**: todos
+  los `sendMail` del repo pasan solo `from`, `to`, `subject`, `text` y `html`.
+  El fix es `nodemailer@9` (major) y tocaría todo el sistema de notificaciones.
+  Revisar si alguna vez se agrega `raw` o adjuntos dinámicos.
+- **`esbuild` (low)** — llega por `tsx` dentro de `packages/database` (script de
+  seed). El advisory es sobre el dev server de esbuild en Windows, que no se corre.
