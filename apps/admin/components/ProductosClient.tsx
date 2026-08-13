@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { BulkPriceUpdate } from "./BulkPriceUpdate";
 import { ImageCropModal } from "./ImageCropModal";
 import {
   type AdminCategory,
@@ -466,6 +467,9 @@ export function ProductosClient() {
           <strong>{planDisplayName(effectivePlan)}</strong>
         </div>
       ) : null}
+
+      {/* ── Carga masiva de precios ── */}
+      <BulkPriceUpdate token={token} products={items} onApplied={load} />
 
       {/* ── Panel de secciones ── */}
       <div className="rounded-2xl border border-gray-200 bg-white">

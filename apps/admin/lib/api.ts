@@ -480,3 +480,42 @@ export async function postCategory(
 export async function deleteCategoryApi(token: string, id: string): Promise<{ ok: boolean }> {
   return deleteJson(`/categories/${id}`, token);
 }
+
+// ── Carga masiva de precios ─────────────────────────────────────────────────
+
+export type BulkPriceMarkupType = "PERCENT" | "AMOUNT";
+export type BulkPriceRounding = "NONE" | "NEAREST_100" | "NEAREST_1000";
+
+export type BulkPriceItem = {
+  product_id: string;
+  /** Nombre tal cual está guardado en la tienda. */
+  name: string;
+  current_price: number;
+  cost: number;
+  new_price: number;
+};
+
+export type BulkPriceResult = {
+  /** false = vista previa, no se escribió nada. */
+  applied: boolean;
+  matched_count: number;
+  unmatched_count: number;
+  items: BulkPriceItem[];
+};
+
+/**
+ * Sin `dryRun: false` la API solo devuelve la vista previa.
+ * El default seguro está también del lado del servidor.
+ */
+export async function postBulkPriceUpdate(
+  token: string,
+  body: {
+    dry_run: boolean;
+    markup_type: BulkPriceMarkupType;
+    markup_value: number;
+    rounding: BulkPriceRounding;
+    items: { name: string; cost: number }[];
+  },
+): Promise<BulkPriceResult> {
+  return postJson<BulkPriceResult>("/products/bulk-price", body, token);
+}
