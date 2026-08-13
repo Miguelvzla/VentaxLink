@@ -11,6 +11,11 @@ import {
 } from '../common/plan-limits';
 import { PrismaService } from '../prisma/prisma.service';
 import { rewriteStoredUploadsUrl } from '../uploads/public-asset-url';
+import {
+  BulkPriceUpdateDto,
+  PriceMarkupType,
+  PriceRounding,
+} from './dto/bulk-price-update.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
@@ -28,6 +33,47 @@ function slugify(name: string): string {
 
 function toDecimal(n: number): Prisma.Decimal {
   return new Prisma.Decimal(n);
+}
+
+/**
+ * Clave de comparación para la carga masiva de precios.
+ * Ignora mayúsculas, acentos y espacios de más, pero NO puntuación: la planilla
+ * modelo se baja con los nombres tal cual están en la tienda, así que conviene
+ * ser conservador y no arriesgar falsos positivos.
+ */
+function normalizeProductName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Precio de venta a partir del costo del proveedor + margen. */
+function computeSalePrice(
+  cost: number,
+  markupType: PriceMarkupType,
+  markupValue: number,
+  rounding: PriceRounding,
+): number {
+  const base =
+    markupType === PriceMarkupType.PERCENT
+      ? cost * (1 + markupValue / 100)
+      : cost + markupValue;
+
+  const exact = Math.round(base * 100) / 100;
+  const step =
+    rounding === PriceRounding.NEAREST_100
+      ? 100
+      : rounding === PriceRounding.NEAREST_1000
+        ? 1000
+        : 0;
+  if (step === 0) return exact;
+
+  const rounded = Math.round(exact / step) * step;
+  /** Redondear no puede dejar en 0 un producto que sí tiene precio. */
+  return rounded === 0 && exact > 0 ? exact : rounded;
 }
 
 const productAdminSelect = {
@@ -431,5 +477,95 @@ export class ProductsService {
       data: { is_active: false },
     });
     return { ok: true };
+  }
+
+  /**
+   * Actualización masiva de precios desde una planilla `nombre | precio`.
+   *
+   * El precio de la planilla es el **costo del proveedor**: se guarda en
+   * `cost_price` y el precio de venta sale de aplicarle el margen.
+   * Solo se tocan los productos cuyo nombre coincide; del resto se informa
+   * únicamente cuántos quedaron afuera.
+   *
+   * Con `dry_run` (por defecto) no escribe nada: devuelve la vista previa
+   * para que el comercio confirme antes de aplicar.
+   */
+  async bulkPriceUpdate(tenantId: string, dto: BulkPriceUpdateDto) {
+    const dryRun = dto.dry_run !== false;
+    const rounding = dto.rounding ?? PriceRounding.NEAREST_100;
+
+    /** Última fila gana si el archivo repite un nombre. */
+    const rowsByName = new Map<string, { name: string; cost: number }>();
+    for (const row of dto.items) {
+      const key = normalizeProductName(row.name);
+      if (!key) continue;
+      rowsByName.set(key, { name: row.name, cost: row.cost });
+    }
+    if (rowsByName.size === 0) {
+      throw new BadRequestException(
+        'El archivo no tiene filas válidas. Revisá que la columna de nombre no esté vacía.',
+      );
+    }
+
+    const products = await this.prisma.product.findMany({
+      where: { tenant_id: tenantId },
+      select: { id: true, name: true, price: true },
+    });
+
+    /** Un mismo nombre normalizado puede repetirse: en ese caso no se toca. */
+    const byName = new Map<string, { id: string; name: string; price: Prisma.Decimal }[]>();
+    for (const p of products) {
+      const key = normalizeProductName(p.name);
+      if (!key) continue;
+      const bucket = byName.get(key);
+      if (bucket) bucket.push(p);
+      else byName.set(key, [p]);
+    }
+
+    const matched: {
+      product_id: string;
+      name: string;
+      current_price: number;
+      cost: number;
+      new_price: number;
+    }[] = [];
+    let unmatchedCount = 0;
+
+    for (const [key, row] of rowsByName) {
+      const hits = byName.get(key);
+      if (!hits || hits.length !== 1) {
+        unmatchedCount += 1;
+        continue;
+      }
+      const product = hits[0];
+      matched.push({
+        product_id: product.id,
+        name: product.name,
+        current_price: Number(product.price),
+        cost: row.cost,
+        new_price: computeSalePrice(row.cost, dto.markup_type, dto.markup_value, rounding),
+      });
+    }
+
+    if (!dryRun && matched.length > 0) {
+      await this.prisma.$transaction(
+        matched.map((m) =>
+          this.prisma.product.update({
+            where: { id: m.product_id },
+            data: {
+              price: toDecimal(m.new_price),
+              cost_price: toDecimal(m.cost),
+            },
+          }),
+        ),
+      );
+    }
+
+    return {
+      applied: !dryRun,
+      matched_count: matched.length,
+      unmatched_count: unmatchedCount,
+      items: matched,
+    };
   }
 }

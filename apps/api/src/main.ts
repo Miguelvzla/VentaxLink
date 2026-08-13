@@ -89,6 +89,14 @@ async function bootstrap() {
     next();
   });
 
+  /**
+   * La carga masiva de precios manda hasta 2000 filas `{name, cost}`, que con
+   * nombres largos supera el límite global. Va antes del parser general.
+   */
+  app.use(
+    '/v1/products/bulk-price',
+    express.json({ limit: process.env.BULK_PRICE_BODY_LIMIT || '2mb' }),
+  );
   app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '256kb' }));
   app.use(
     express.urlencoded({
