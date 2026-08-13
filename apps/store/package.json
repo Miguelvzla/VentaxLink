@@ -10,7 +10,7 @@
     "lint": "node ../../scripts/next-with-clean-env.mjs lint"
   },
   "dependencies": {
-    "next": "15.5.15",
+    "next": "15.5.23",
     "react": "^18",
     "react-dom": "^18"
   },
@@ -19,8 +19,8 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
-    "eslint-config-next": "15.5.15",
-    "postcss": "^8",
+    "eslint-config-next": "15.5.23",
+    "postcss": "8.5.26",
     "tailwindcss": "3.4.19",
     "typescript": "^5"
   }
