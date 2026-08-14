@@ -11,6 +11,8 @@ packages/database/.env
 
 *.log
 .DS_Store
+*.tsbuildinfo
+.claude/
 
 # Archivos subidos por la API (imágenes de productos)
 apps/api/uploads/tenants
